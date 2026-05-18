@@ -1,0 +1,2989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EventOS">
+<meta name="theme-color" content="#0f0f0f">
+<title>EventOS Mark VII — Event Execution System</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%230f0f0f' rx='42'/><text x='96' y='128' font-family='DM Sans,sans-serif' font-size='110' font-weight='600' text-anchor='middle' fill='%23e8c547'>E</text></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%230f0f0f' rx='42'/><text x='96' y='128' font-family='DM Sans,sans-serif' font-size='110' font-weight='600' text-anchor='middle' fill='%23e8c547'>E</text></svg>">
+<link rel="manifest" href='data:application/manifest+json,{"name":"EventOS","short_name":"EventOS","start_url":".","display":"standalone","background_color":"%230f0f0f","theme_color":"%230f0f0f","orientation":"portrait","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27><rect width=%27192%27 height=%27192%27 fill=%27%230f0f0f%27 rx=%2742%27/><text x=%2796%27 y=%27128%27 font-family=%27DM Sans,sans-serif%27 font-size=%27110%27 font-weight=%27600%27 text-anchor=%27middle%27 fill=%27%23e8c547%27>E</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #0f0f0f;
+  --bg2: #181818;
+  --bg3: #222222;
+  --bg4: #2a2a2a;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0ede8;
+  --text2: #9a9690;
+  --text3: #6a6660;
+  --accent: #e8c547;
+  --accent-dim: rgba(232,197,71,0.12);
+  --green: #4caf82;
+  --green-dim: rgba(76,175,130,0.12);
+  --red: #e05a5a;
+  --red-dim: rgba(224,90,90,0.12);
+  --blue: #5a9ee0;
+  --blue-dim: rgba(90,158,224,0.12);
+  --orange: #e0935a;
+  --orange-dim: rgba(224,147,90,0.12);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  height: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* TOP BAR */
+.topbar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: calc(var(--safe-top) + 14px) 18px 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.topbar-left {}
+.app-name {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: var(--text);
+}
+.app-name span { color: var(--accent); }
+.event-label {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+  font-family: var(--mono);
+}
+.topbar-badge {
+  background: var(--red-dim);
+  border: 1px solid var(--red);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--red);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pulse-dot {
+  width: 6px; height: 6px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* SCROLL AREA */
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  padding-bottom: calc(var(--safe-bottom) + 76px);
+}
+.scroll-area::-webkit-scrollbar { display: none; }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: rgba(15,15,15,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding: 10px 8px calc(var(--safe-bottom) + 10px);
+  display: flex;
+  z-index: 999;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 2px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  min-width: 0;
+}
+.nav-item.active { color: var(--accent); }
+.nav-item:active { background: var(--bg3); }
+.nav-icon { font-size: 18px; line-height: 1; }
+.nav-label { font-size: 9px; font-family: var(--mono); letter-spacing: 0.01em; white-space: nowrap; }
+
+/* SECTION */
+.section { display: none; }
+.section.active { display: block; }
+
+/* CARDS */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+
+/* METRICS */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.metric-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.metric-val {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.metric-val.green { color: var(--green); }
+.metric-val.yellow { color: var(--accent); }
+.metric-val.red { color: var(--red); }
+.metric-val.blue { color: var(--blue); }
+.metric-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* PROGRESS */
+.progress-wrap { margin-bottom: 12px; }
+.progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.progress-title { font-size: 14px; font-weight: 500; }
+.progress-pct { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+.progress-bar { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 2px; background: var(--green); transition: width 0.4s ease; }
+
+/* ALERT */
+.alert {
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.alert-warn { background: var(--orange-dim); border: 1px solid rgba(224,147,90,0.3); color: var(--orange); }
+.alert-info { background: var(--blue-dim); border: 1px solid rgba(90,158,224,0.3); color: var(--blue); }
+.alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.alert-text { line-height: 1.5; }
+
+/* TIMELINE */
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.timeline-item:last-child { border-bottom: none; }
+.tl-time {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  min-width: 44px;
+  padding-top: 3px;
+}
+.tl-dot-wrap { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.dot-done { background: var(--green); }
+.dot-active { background: var(--accent); }
+.dot-up { background: var(--bg4); border: 1px solid var(--border2); }
+.tl-body { flex: 1; }
+.tl-name { font-size: 13px; font-weight: 500; }
+.tl-sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
+
+/* BADGES */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--mono);
+  letter-spacing: 0.03em;
+}
+.b-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(76,175,130,0.25); }
+.b-yellow { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(232,197,71,0.25); }
+.b-gray { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.b-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(224,90,90,0.25); }
+.b-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(90,158,224,0.25); }
+
+/* VENDOR */
+.vendor-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.vendor-item:last-child { border-bottom: none; }
+.vendor-top { display: flex; align-items: center; gap: 10px; }
+.avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600;
+  flex-shrink: 0;
+}
+.vendor-meta { flex: 1; min-width: 0; }
+.vendor-name { font-size: 14px; font-weight: 500; }
+.vendor-role { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.vendor-phone { font-size: 11px; color: var(--blue); margin-top: 1px; }
+.vendor-status { margin-top: 10px; }
+.status-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.status-btn {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  font-family: var(--mono);
+  transition: all 0.15s;
+}
+.status-btn.active-status { border-color: var(--green); background: var(--green-dim); color: var(--green); }
+.status-btn:active { transform: scale(0.96); }
+
+/* TASKS */
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.task-item:last-child { border-bottom: none; }
+.task-cb {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border2);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 1px;
+  font-size: 12px;
+}
+.task-cb.done { background: var(--green); border-color: var(--green); color: #fff; }
+.task-body { flex: 1; }
+.task-name { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.task-name.done { text-decoration: line-through; color: var(--text3); }
+.task-meta { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+/* COMMS */
+.msg-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.msg-item:last-child { border-bottom: none; }
+.msg-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.msg-sender { font-size: 13px; font-weight: 500; }
+.msg-time { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-left: auto; }
+.msg-body { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+/* BACKUP */
+.backup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.backup-item:last-child { border-bottom: none; }
+.backup-cat {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+  min-width: 76px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.backup-info { flex: 1; min-width: 0; }
+.backup-name { font-size: 13px; font-weight: 500; }
+.backup-phone { font-size: 11px; color: var(--blue); margin-top: 2px; }
+.switch-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--orange);
+  background: var(--orange-dim);
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--mono);
+  transition: all 0.15s;
+}
+.switch-btn:active { transform: scale(0.96); }
+.switch-btn.activated { border-color: var(--green); background: var(--green-dim); color: var(--green); }
+
+/* INPUTS */
+.input-group { margin-top: 14px; }
+.input-row { display: flex; gap: 8px; flex-wrap: wrap; }
+input[type=text], input[type=time], select, textarea {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 10px 12px;
+  outline: none;
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border 0.15s;
+}
+input[type=text]:focus, input[type=time]:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+}
+input::placeholder { color: var(--text3); }
+.add-btn {
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #0f0f0f;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.add-btn:active { opacity: 0.8; transform: scale(0.98); }
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.card-header .card-title { margin-bottom: 0; }
+.export-btn {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 500;
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.15s;
+}
+.export-btn:active { opacity: 0.7; transform: scale(0.97); }
+.export-btn:hover { border-color: var(--accent); }
+.field-label {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  display: block;
+  font-weight: 500;
+}
+.field-label .req { color: var(--red); margin-left: 3px; font-weight: 700; }
+.field-group { display: flex; flex-direction: column; }
+.field-row { display: flex; gap: 10px; }
+.field-row .field-group { flex: 1; min-width: 0; }
+.field-group input.input-error,
+.field-group select.input-error,
+.field-group textarea.input-error {
+  border-color: var(--red) !important;
+  background: var(--red-dim) !important;
+}
+.toast-undo {
+  margin-left: 14px;
+  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: 1px;
+  flex-shrink: 0;
+}
+.status-dot-pending { background: var(--blue); box-shadow: 0 0 0 2px rgba(90,158,224,0.18); }
+.status-dot-progress { background: var(--orange); box-shadow: 0 0 0 2px rgba(224,147,90,0.18); }
+.status-dot-done { background: var(--green); box-shadow: 0 0 0 2px rgba(76,175,130,0.18); }
+.card.card-primary {
+  border-left: 3px solid var(--accent);
+  padding-left: 14px;
+}
+.filter-chip {
+  padding: 8px 14px;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--text2);
+  font-size: 12px;
+  font-family: var(--mono);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-chip:hover { color: var(--text); border-color: var(--border2); }
+.filter-chip.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(232,197,71,0.35);
+}
+.list-search {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+}
+.list-search:focus { outline: none; border-color: var(--border2); }
+.role-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.role-chip {
+  padding: 6px 10px;
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 11px;
+  font-family: var(--mono);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.role-chip:hover { color: var(--accent); border-color: var(--accent); }
+.role-chip:active { transform: scale(0.96); }
+.onboarding-card {
+  background: linear-gradient(180deg, rgba(232,197,71,0.10), rgba(232,197,71,0.02));
+  border: 1px solid rgba(232,197,71,0.25);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.onboarding-card .ob-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.onboarding-card .ob-sub { font-size: 12px; color: var(--text2); margin-bottom: 14px; line-height: 1.5; }
+.onboarding-step { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.onboarding-step:first-of-type { border-top: none; }
+.ob-step-num { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-dim); color: var(--accent); font-size: 12px; font-family: var(--mono); display: flex; align-items: center; justify-content: center; font-weight: 600; }
+.ob-step-text { flex: 1; font-size: 13px; color: var(--text); }
+.ob-step-cta { font-size: 11px; font-family: var(--mono); color: var(--accent); text-decoration: underline; cursor: pointer; }
+.ob-dismiss { background: transparent; border: none; color: var(--text3); font-size: 11px; font-family: var(--mono); cursor: pointer; text-decoration: underline; padding: 6px 0 0; }
+.attention-pile { margin-top: 12px; padding: 12px 14px; background: var(--red-dim); border: 1px solid rgba(224,90,90,0.25); border-radius: var(--radius-sm); }
+.attention-pile .ap-title { font-size: 12px; font-family: var(--mono); color: var(--red); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; font-weight: 600; }
+.attention-pile .ap-item { font-size: 13px; color: var(--text); padding: 6px 0; border-top: 1px solid rgba(224,90,90,0.15); line-height: 1.5; }
+.attention-pile .ap-item:first-of-type { border-top: none; }
+.attention-pile .ap-empty { font-size: 12px; color: var(--text3); }
+.send-btn {
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--green);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.send-btn:active { opacity: 0.8; }
+.sep { height: 1px; background: var(--border); margin: 4px 0 14px; }
+.section-label {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+select option { background: #222; }
+
+/* LOGISTICS / SUB-TABS */
+.subtabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 12px;
+}
+.subtab {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text3);
+  border: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.subtab.active { background: var(--bg4); color: var(--text); }
+.subview { display: none; }
+.subview.active { display: block; }
+
+.log-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.log-item:last-child { border-bottom: none; }
+.log-row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.log-name { font-size: 14px; font-weight: 500; flex: 1; }
+.log-time {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(232,197,71,0.25);
+}
+.log-meta { font-size: 11px; color: var(--text3); margin-bottom: 6px; line-height: 1.5; }
+.log-meta strong { color: var(--text2); font-weight: 500; }
+.log-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items:center; }
+.log-link {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--blue);
+  text-decoration: none;
+  padding: 10px 14px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 14px;
+  border: 1px solid rgba(90,158,224,0.3);
+  background: var(--blue-dim);
+  cursor: pointer;
+}
+.log-link.green { color: var(--green); border-color: rgba(76,175,130,0.3); background: var(--green-dim); }
+.log-del {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text3);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  min-height: 36px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.log-del:hover { color: var(--red); border-color: var(--red); }
+
+/* FUNCTIONS / DRESS CODE */
+.fn-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.fn-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.fn-emoji { font-size: 22px; }
+.fn-title { font-size: 14px; font-weight: 600; }
+.fn-when { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+.fn-row { display: flex; gap: 8px; padding: 5px 0; font-size: 12px; border-top: 1px solid var(--border); }
+.fn-row strong { color: var(--text3); font-weight: 500; min-width: 56px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.fn-row span { color: var(--text); flex: 1; display: flex; align-items: center; gap: 6px; }
+.fn-color { display:inline-block; width:14px; height:14px; border-radius:50%; border:1px solid var(--border2); flex-shrink:0; }
+
+/* PLANNING TIMELINE */
+.plan-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.plan-item:last-child { border-bottom: none; }
+.plan-cb {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border2);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+}
+.plan-cb.done { background: var(--green); border-color: var(--green); color: #fff; }
+.plan-body { flex: 1; min-width: 0; }
+.plan-name { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.plan-name.done { text-decoration: line-through; color: var(--text3); }
+.plan-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.plan-countdown {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.cd-soon { background: var(--red-dim); color: var(--red); border: 1px solid rgba(224,90,90,0.3); }
+.cd-near { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(232,197,71,0.3); }
+.cd-far { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.cd-past { background: var(--green-dim); color: var(--green); border: 1px solid rgba(76,175,130,0.3); }
+
+/* GUESTS */
+.guest-item {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.guest-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.guest-name { font-size: 14px; font-weight: 500; flex: 1; }
+.guest-pax {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--bg4);
+  padding: 3px 8px;
+  border-radius: 12px;
+  color: var(--text2);
+}
+.guest-meta { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.guest-meta strong { color: var(--text3); font-weight: 500; font-size: 11px; }
+.guest-notes {
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: var(--accent-dim);
+  border-radius: 6px;
+  border-left: 2px solid var(--accent);
+}
+
+/* FAMILY PORTAL */
+.family-mode {
+  background: var(--bg);
+  min-height: 100vh;
+}
+.family-header {
+  padding: 24px 18px 18px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+}
+.family-greeting {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.family-event {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.family-sub {
+  font-size: 13px;
+  color: var(--text2);
+}
+.family-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 12px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.family-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.family-tab.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(232,197,71,0.3);
+}
+.family-section {
+  display: none;
+  padding: 14px;
+}
+.family-section.active { display: block; }
+
+.fp-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.fp-card-title {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+.fp-banner {
+  background: var(--accent-dim);
+  border: 1px solid rgba(232,197,71,0.3);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+.fp-banner-icon { font-size: 28px; margin-bottom: 6px; }
+.fp-banner-text { color: var(--accent); font-size: 12px; line-height: 1.5; }
+
+.rsvp-status {
+  background: var(--green-dim);
+  border: 1px solid rgba(76,175,130,0.3);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+.rsvp-status .icon { font-size: 28px; margin-bottom: 6px; }
+.rsvp-status .text { color: var(--green); font-size: 13px; font-weight: 500; line-height: 1.5; }
+
+.fam-link-box {
+  background: var(--bg3);
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  word-break: break-all;
+}
+.fam-copy-btn {
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* TOAST */
+.toast {
+  position: fixed;
+  top: calc(var(--safe-top) + 80px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 13px;
+  color: var(--text);
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: 90vw;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* EMPTY STATE */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+.empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.7;
+  display: inline-flex;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--bg3);
+  align-items: center;
+  justify-content: center;
+}
+
+/* DIVIDER LABEL */
+.divider-label {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 14px 0 6px;
+}
+
+/* scrollbar for non-mobile */
+@media (min-width: 600px) {
+  .scroll-area::-webkit-scrollbar { display: block; width: 4px; }
+  .scroll-area::-webkit-scrollbar-track { background: transparent; }
+  .scroll-area::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+}
+</style>
+</head>
+<body>
+
+<!-- FAMILY PORTAL (shown when URL has #family) -->
+<div class="family-mode" id="family-mode" style="display:none">
+  <div class="family-header">
+    <div class="family-greeting">You're invited</div>
+    <div class="family-event" id="fam-event-name">The Wedding</div>
+    <div class="family-sub" id="fam-event-sub">All your wedding details in one place</div>
+  </div>
+
+  <div class="family-tabs">
+    <button class="family-tab active" onclick="famNav('progress',this)">📊 Progress</button>
+    <button class="family-tab" onclick="famNav('info',this)">📅 Info</button>
+    <button class="family-tab" onclick="famNav('rsvp',this)">✈️ RSVP</button>
+    <button class="family-tab" onclick="famNav('chat',this)">💬 Chat</button>
+  </div>
+
+  <!-- PROGRESS TAB (default) -->
+  <div class="family-section active" id="fam-progress">
+    <div class="fp-banner">
+      <div class="fp-banner-icon">💍</div>
+      <div class="fp-banner-text">Live status of the wedding preparations</div>
+    </div>
+
+    <!-- Big headline progress -->
+    <div class="fp-card" style="text-align:center;padding:24px 14px">
+      <div style="font-size:11px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Overall progress</div>
+      <div style="font-size:56px;font-weight:600;color:var(--accent);line-height:1;margin-bottom:6px" id="fam-progress-pct">0%</div>
+      <div style="font-size:13px;color:var(--text2)" id="fam-progress-label">Wedding is being prepared</div>
+      <div class="progress-bar" style="margin-top:16px;height:8px"><div class="progress-fill" id="fam-progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Highlights row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="fp-card" style="text-align:center;padding:14px 10px;margin-bottom:0">
+        <div style="font-size:24px;font-weight:600;color:var(--green)" id="fam-h-vendors">0</div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-top:4px">Vendors confirmed</div>
+      </div>
+      <div class="fp-card" style="text-align:center;padding:14px 10px;margin-bottom:0">
+        <div style="font-size:24px;font-weight:600;color:var(--blue)" id="fam-h-tasks">0/0</div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-top:4px">Tasks done</div>
+      </div>
+    </div>
+
+    <!-- Latest update -->
+    <div class="fp-card">
+      <div class="fp-card-title">Latest update</div>
+      <div id="fam-latest-update" style="font-size:13px;color:var(--text2);line-height:1.6">No updates yet</div>
+    </div>
+
+    <!-- Big alerts only (urgent) -->
+    <div class="fp-card" id="fam-alerts-card" style="display:none">
+      <div class="fp-card-title" style="color:var(--red)">⚠️ Heads up</div>
+      <div id="fam-alerts-list" style="font-size:13px;color:var(--text2);line-height:1.6"></div>
+    </div>
+
+    <!-- Last updated stamp -->
+    <div style="text-align:center;padding:12px;font-size:11px;color:var(--text3);font-family:var(--mono)">
+      Auto-refreshes every few seconds
+    </div>
+  </div>
+
+  <!-- INFO TAB -->
+  <div class="family-section" id="fam-info">
+    <div class="fp-banner">
+      <div class="fp-banner-icon">💌</div>
+      <div class="fp-banner-text">Welcome! Here's everything you need to know about the wedding.</div>
+    </div>
+
+    <div class="fp-card">
+      <div class="fp-card-title">All functions</div>
+      <div id="fam-functions-list"></div>
+    </div>
+
+    <div class="fp-card">
+      <div class="fp-card-title">Today's schedule</div>
+      <div id="fam-timeline"></div>
+    </div>
+  </div>
+
+  <!-- RSVP TAB -->
+  <div class="family-section" id="fam-rsvp">
+    <div id="fam-rsvp-status-wrap"></div>
+
+    <div class="fp-card">
+      <div class="fp-card-title">Your travel details</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5">
+        Please share your travel info so we can arrange pickup and accommodation.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input type="text" id="fam-name" placeholder="Your name / family name">
+        <div style="display:flex;gap:8px">
+          <input type="number" id="fam-pax" placeholder="No. of people" min="1" value="1" style="flex:1">
+          <input type="text" id="fam-from-city" placeholder="Coming from (city)" style="flex:1">
+        </div>
+        <select id="fam-mode">
+          <option value="Flight">✈️ Flight</option>
+          <option value="Train">🚆 Train</option>
+          <option value="Car">🚗 By car</option>
+        </select>
+        <input type="text" id="fam-num" placeholder="Flight / Train number">
+        <div style="display:flex;gap:8px">
+          <input type="date" id="fam-date" style="flex:1">
+          <input type="time" id="fam-time" style="flex:1">
+        </div>
+        <input type="tel" id="fam-phone" placeholder="Your phone number">
+        <input type="text" id="fam-notes" placeholder="Any special requirements? (e.g. veg meals)">
+        <button class="add-btn" onclick="submitFamilyRSVP()">Submit RSVP</button>
+      </div>
+    </div>
+
+    <div class="fp-card">
+      <div class="fp-card-title">Your hotel allocation</div>
+      <div id="fam-hotel-info" style="font-size:13px;color:var(--text2);line-height:1.7">
+        Hotel will be assigned once you submit your RSVP. We'll notify you here.
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT TAB -->
+  <div class="family-section" id="fam-chat">
+    <div class="fp-banner">
+      <div class="fp-banner-icon">💬</div>
+      <div class="fp-banner-text">Questions? Ask the wedding coordinator directly.</div>
+    </div>
+    <div class="fp-card">
+      <div class="fp-card-title">Family chat</div>
+      <div id="fam-chat-list" style="max-height:300px;overflow-y:auto;margin-bottom:12px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <select id="fam-chat-tag">
+          <option value="info">ℹ️ General question</option>
+          <option value="urgent">🚨 Urgent</option>
+          <option value="update">📢 Update</option>
+        </select>
+        <textarea id="fam-chat-msg" placeholder="Type your message..." rows="3" style="resize:vertical"></textarea>
+        <button class="add-btn" onclick="sendFamilyMsg()">Send message</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="coordinator-app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="app-name">Event<span>OS</span></div>
+      <div class="event-label" id="event-label">New Event · Set up your details</div>
+    </div>
+    <div class="topbar-badge">
+      <div class="pulse-dot"></div>
+      <span id="alerts-count">0 alerts</span>
+    </div>
+  </div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll-area" id="scroll-area">
+
+    <!-- TODAY (live execution view) -->
+    <div class="section active" id="section-today">
+
+      <div class="onboarding-card" id="onboarding-card" style="display:none">
+        <div class="ob-title">👋 Welcome to EventOS</div>
+        <div class="ob-sub">Three quick steps to get this app working for your wedding:</div>
+        <div class="onboarding-step">
+          <div class="ob-step-num">1</div>
+          <div class="ob-step-text">Add your first function (Mehendi, Sangeet, Wedding…)</div>
+          <a class="ob-step-cta" onclick="navTo('functions')">Go →</a>
+        </div>
+        <div class="onboarding-step">
+          <div class="ob-step-num">2</div>
+          <div class="ob-step-text">Add a few guests (or paste your sheet)</div>
+          <a class="ob-step-cta" onclick="navTo('guests')">Go →</a>
+        </div>
+        <div class="onboarding-step">
+          <div class="ob-step-num">3</div>
+          <div class="ob-step-text">Add your vendors with role chips for speed</div>
+          <a class="ob-step-cta" onclick="navTo('vendors')">Go →</a>
+        </div>
+        <div style="text-align:right;margin-top:8px"><button class="ob-dismiss" onclick="dismissOnboarding()">Hide this</button></div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-val green" id="m-vendors">0</div><div class="metric-label">Vendors</div></div>
+        <div class="metric-card"><div class="metric-val yellow" id="m-tasks">0</div><div class="metric-label">Total Tasks</div></div>
+        <div class="metric-card"><div class="metric-val blue" id="m-done">0</div><div class="metric-label">Completed</div></div>
+        <div class="metric-card"><div class="metric-val red" id="m-alerts">0</div><div class="metric-label">Alerts</div></div>
+      </div>
+
+      <div class="card progress-wrap">
+        <div class="progress-row">
+          <span class="progress-title">Overall progress</span>
+          <span class="progress-pct" id="dash-pct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="dash-fill" style="width:64%"></div></div>
+      </div>
+
+      <div class="card card-primary">
+        <div class="card-title">Live snapshot</div>
+        <div id="today-snapshot" style="font-size:13px;color:var(--text2);line-height:1.8"></div>
+        <div class="attention-pile" id="attention-pile"></div>
+      </div>
+
+      <div class="card card-primary">
+        <div class="card-title">Today's timeline</div>
+        <div id="timeline-list"></div>
+        <div class="sep"></div>
+        <div class="section-label">Add timeline event</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="field-row">
+            <div class="field-group" style="flex:0 0 110px">
+              <label class="field-label" for="new-tl-time">Time</label>
+              <input type="time" id="new-tl-time">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="new-tl-name">Event <span class="req">*</span></label>
+              <input type="text" id="new-tl-name" placeholder="What's happening">
+            </div>
+          </div>
+          <button class="add-btn" onclick="addTimeline()">+ Add to timeline</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent messages</div>
+        <div id="today-messages-preview" style="font-size:12px;color:var(--text3);line-height:1.6">No messages yet.</div>
+        <div class="sep"></div>
+        <a class="log-link" onclick="nav('setup',document.querySelector('[data-nav-target=setup]'))" style="display:inline-block">Open all comms →</a>
+      </div>
+
+    </div>
+
+    <!-- FUNCTIONS (the wedding spine) -->
+    <div class="section" id="section-functions">
+      <div class="alert alert-info">
+        <div class="alert-icon">👗</div>
+        <div class="alert-text">Functions, dress codes & themes — the spine of the wedding.</div>
+      </div>
+      <div class="card card-primary">
+        <div class="card-title">All functions</div>
+        <div id="functions-list"></div>
+        <div class="sep"></div>
+        <div class="section-label">Add new function</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="field-row">
+            <div class="field-group" style="flex:0 0 70px">
+              <label class="field-label" for="fn-emoji">Icon</label>
+              <input type="text" id="fn-emoji" placeholder="🎉" maxlength="2" style="text-align:center">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="fn-title">Function name <span class="req">*</span></label>
+              <input type="text" id="fn-title" placeholder="e.g. Sangeet">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="fn-date">Date</label>
+              <input type="date" id="fn-date">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="fn-time">Time</label>
+              <input type="time" id="fn-time">
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="fn-venue">Venue</label>
+            <input type="text" id="fn-venue" placeholder="Venue name and address">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="fn-dress">Dress code</label>
+            <input type="text" id="fn-dress" placeholder="e.g. Indian traditional">
+          </div>
+          <div class="field-row" style="align-items:flex-end">
+            <div class="field-group" style="flex:0 0 60px">
+              <label class="field-label" for="fn-color">Color</label>
+              <input type="color" id="fn-color" value="#e8c547" style="height:42px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);padding:2px">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="fn-theme">Theme</label>
+              <input type="text" id="fn-theme" placeholder="e.g. Red & gold">
+            </div>
+          </div>
+          <button class="add-btn" onclick="addFunction()">+ Add function</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUESTS (single source of truth: list + their arrival, hotel, vehicle) -->
+    <div class="section" id="section-guests">
+      <div class="alert alert-info">
+        <div class="alert-icon">👥</div>
+        <div class="alert-text">Everyone attending. Their travel, stay and pickup all in one place.</div>
+      </div>
+
+      <!-- Sub-tabs inside Guests -->
+      <div class="subtabs">
+        <button class="subtab active" onclick="gsubnav('list',this)">👥 Guest list</button>
+        <button class="subtab" onclick="gsubnav('arrivals',this)">✈️ Arrivals</button>
+        <button class="subtab" onclick="gsubnav('vehicles',this)">🚗 Pickups</button>
+        <button class="subtab" onclick="gsubnav('hotels',this)">🏨 Hotels</button>
+      </div>
+
+      <!-- Guest list sub-view -->
+      <div class="subview active" id="gsub-list">
+        <div class="card card-primary">
+          <div class="card-title">Guest list</div>
+          <input type="search" class="list-search" placeholder="🔎 Search guests..." oninput="filterList('guests-list', this.value)">
+          <div id="guests-list"></div>
+          <div class="sep"></div>
+          <div class="card-header" style="margin-bottom:10px">
+            <div class="section-label" style="margin:0">Add guest</div>
+            <button class="export-btn" onclick="toggleBulkPaste()">📋 Paste from sheet</button>
+          </div>
+          <div id="bulk-paste-panel" style="display:none;margin-bottom:14px;padding:12px;border:1px dashed var(--border2);border-radius:var(--radius-sm);background:var(--bg)">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5">Paste one guest per line. Format: <strong>Name [tab/comma] Pax [tab/comma] City [tab/comma] Stay</strong>. Headers OK.</div>
+            <textarea id="bulk-paste-text" rows="6" style="width:100%;font-family:var(--mono);font-size:12px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:10px" placeholder="Sharma family	4	Delhi	Taj 304&#10;Patel family	2	Mumbai	Taj 305"></textarea>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="add-btn" onclick="bulkAddGuests()" style="flex:1">Add all</button>
+              <button class="export-btn" onclick="toggleBulkPaste()">Cancel</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field-row">
+              <div class="field-group" style="flex:2">
+                <label class="field-label" for="gu-name">Name / family <span class="req">*</span></label>
+                <input type="text" id="gu-name" placeholder="e.g. Sharma family">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="gu-pax">Pax</label>
+                <input type="number" id="gu-pax" min="1" value="1">
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="gu-from">Coming from</label>
+              <input type="text" id="gu-from" placeholder="City">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="gu-room">Stay (hotel + room)</label>
+              <input type="text" id="gu-room" placeholder="e.g. Taj — Room 304">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="gu-notes">Notes</label>
+              <input type="text" id="gu-notes" placeholder="Dietary, accessibility, etc.">
+            </div>
+            <button class="add-btn" onclick="addGuest()">+ Add guest</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrivals sub-view -->
+      <div class="subview" id="gsub-arrivals">
+        <div class="card card-primary">
+          <div class="card-header">
+            <div class="card-title">Guest arrivals</div>
+            <button class="export-btn" onclick="exportToCSV('arrivals')">📊 Export</button>
+          </div>
+          <div id="arrivals-list"></div>
+          <div class="sep"></div>
+          <div class="section-label">Add guest arrival</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field-group">
+              <label class="field-label" for="ar-guest">Guest name <span class="req">*</span></label>
+              <input type="text" id="ar-guest" placeholder="e.g. Sharma family — 4 pax">
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="ar-mode">Mode of travel</label>
+                <select id="ar-mode">
+                  <option value="Flight">✈️ Flight</option>
+                  <option value="Train">🚆 Train</option>
+                  <option value="Car">🚗 Car</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="ar-num">Flight / Train no.</label>
+                <input type="text" id="ar-num" placeholder="e.g. AI 805">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="ar-from">Coming from</label>
+                <input type="text" id="ar-from" placeholder="e.g. Delhi">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="ar-time">Arrival time</label>
+                <input type="time" id="ar-time">
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ar-phone">Contact phone</label>
+              <input type="tel" id="ar-phone" placeholder="e.g. +91 98765 43210">
+            </div>
+            <button class="add-btn" onclick="addArrival()">+ Add arrival</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vehicles sub-view -->
+      <div class="subview" id="gsub-vehicles">
+        <div class="card card-primary">
+          <div class="card-header">
+            <div class="card-title">Vehicle dispatch</div>
+            <button class="export-btn" onclick="exportToCSV('vehicles')">📊 Export</button>
+          </div>
+          <div id="vehicles-list"></div>
+          <div class="sep"></div>
+          <div class="section-label">Add vehicle / pickup</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="vh-driver">Driver name <span class="req">*</span></label>
+                <input type="text" id="vh-driver" placeholder="e.g. Ramesh">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="vh-car">Car / Plate</label>
+                <input type="text" id="vh-car" placeholder="e.g. Innova / DL01AB1234">
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="vh-phone">Driver phone</label>
+              <input type="tel" id="vh-phone" placeholder="e.g. +91 98765 43210">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="vh-pickup">Picking up (guest)</label>
+              <input type="text" id="vh-pickup" placeholder="e.g. Sharma family">
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="vh-from">Pickup from</label>
+                <input type="text" id="vh-from" placeholder="Airport / station">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="vh-to">Drop at</label>
+                <input type="text" id="vh-to" placeholder="Hotel name">
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="vh-time">Pickup time</label>
+              <input type="time" id="vh-time">
+            </div>
+            <button class="add-btn" onclick="addVehicle()">+ Add vehicle</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hotels sub-view -->
+      <div class="subview" id="gsub-hotels">
+        <div class="card card-primary">
+          <div class="card-header">
+            <div class="card-title">Hotel allocation</div>
+            <button class="export-btn" onclick="exportToCSV('hotels')">📊 Export</button>
+          </div>
+          <div id="hotels-list"></div>
+          <div class="sep"></div>
+          <div class="section-label">Add hotel allocation</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field-group">
+              <label class="field-label" for="ht-guest">Guest name <span class="req">*</span></label>
+              <input type="text" id="ht-guest" placeholder="e.g. Sharma family">
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="ht-hotel">Hotel</label>
+                <input type="text" id="ht-hotel" placeholder="Hotel name">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="ht-room">Room no.</label>
+                <input type="text" id="ht-room" placeholder="e.g. 304">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="ht-checkin">Check-in</label>
+                <input type="date" id="ht-checkin">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="ht-checkout">Check-out</label>
+                <input type="date" id="ht-checkout">
+              </div>
+            </div>
+            <button class="add-btn" onclick="addHotel()">+ Add allocation</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VENDORS (primary + backup unified) -->
+    <div class="section" id="section-vendors">
+      <div class="vendor-filter" style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="filter-chip active" data-filter="all" onclick="setVendorFilter('all',this)">All</button>
+        <button class="filter-chip" data-filter="primary" onclick="setVendorFilter('primary',this)">Primary</button>
+        <button class="filter-chip" data-filter="backup" onclick="setVendorFilter('backup',this)">Backup rolodex</button>
+      </div>
+
+      <div class="card card-primary" id="vendor-primary-card">
+        <div class="card-title">Primary vendors</div>
+        <input type="search" class="list-search" placeholder="🔎 Search vendors..." oninput="filterList('vendor-list', this.value)">
+        <div id="vendor-list"></div>
+        <div class="sep"></div>
+        <div class="section-label">Add new vendor</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="field-group">
+            <label class="field-label" for="v-name">Vendor name <span class="req">*</span></label>
+            <input type="text" id="v-name" placeholder="e.g. Royal Caterers">
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="v-role">Role / category</label>
+              <input type="text" id="v-role" placeholder="e.g. DJ, Caterer, Florist">
+              <div class="role-chips">
+                <button type="button" class="role-chip" onclick="setVendorRole('DJ')">DJ</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Photographer')">Photographer</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Videographer')">Videographer</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Caterer')">Caterer</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Florist')">Florist</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Mehendi artist')">Mehendi</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Makeup artist')">Makeup</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Decor')">Decor</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Priest / Pandit')">Priest</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Sound')">Sound</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Lights')">Lights</button>
+                <button type="button" class="role-chip" onclick="setVendorRole('Choreographer')">Choreographer</button>
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="v-phone">Phone</label>
+              <input type="tel" id="v-phone" placeholder="+91 98765 43210">
+            </div>
+          </div>
+          <button class="add-btn" onclick="addVendor()">+ Add vendor</button>
+        </div>
+      </div>
+
+      <div class="card card-primary" id="vendor-backup-card">
+        <div class="card-title">Backup rolodex</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5">Pre-vetted alternatives to call when a primary vendor flakes. These are contacts, not held reservations.</div>
+        <input type="search" class="list-search" placeholder="🔎 Search backups..." oninput="filterList('backup-list', this.value)">
+        <div id="backup-list"></div>
+        <div class="sep"></div>
+        <div class="section-label">Add backup vendor</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="b-cat">Category <span class="req">*</span></label>
+              <input type="text" id="b-cat" placeholder="e.g. DJ">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="b-name">Vendor name <span class="req">*</span></label>
+              <input type="text" id="b-name" placeholder="e.g. Beat Masters">
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="b-phone">Phone</label>
+            <input type="tel" id="b-phone" placeholder="+91 98765 43210">
+          </div>
+          <button class="add-btn" onclick="addBackup()">+ Add backup</button>
+        </div>
+      </div>
+
+      <div class="card" id="switch-log-card" style="display:none">
+        <div class="card-title">Switch log</div>
+        <div id="switch-log"></div>
+      </div>
+    </div>
+
+    <!-- SETUP (admin: family portal, planning, comms, reset) -->
+    <div class="section" id="section-setup">
+      <div class="alert alert-info">
+        <div class="alert-icon">⚙️</div>
+        <div class="alert-text">Admin: family portal, planning tasks, internal comms, and event reset.</div>
+      </div>
+
+      <!-- Sub-tabs inside Setup -->
+      <div class="subtabs">
+        <button class="subtab active" onclick="ssubnav('family',this)">👨‍👩‍👧 Family</button>
+        <button class="subtab" onclick="ssubnav('tasks',this)">✅ Tasks</button>
+        <button class="subtab" onclick="ssubnav('planning',this)">📋 Planning</button>
+        <button class="subtab" onclick="ssubnav('comms',this)">💬 Comms</button>
+      </div>
+
+      <!-- Family portal sub-view -->
+      <div class="subview active" id="ssub-family">
+        <div class="card">
+          <div class="card-title">Family portal</div>
+          <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:14px">
+            Generate a link to share with family on WhatsApp. They can RSVP, see dress codes, and chat with you.
+          </div>
+          <div class="fam-link-box" id="fam-link-display">Tap below to generate your family link</div>
+          <button class="fam-copy-btn" onclick="generateFamilyLink()">📋 Generate &amp; copy family link</button>
+
+          <div class="sep"></div>
+          <div class="section-label">Family submissions</div>
+          <div id="family-submissions-list" style="font-size:12px;color:var(--text3)">No RSVPs yet</div>
+
+          <div class="sep"></div>
+          <div class="section-label">Messages from family</div>
+          <div id="family-messages-list" style="font-size:12px;color:var(--text3);max-height:240px;overflow-y:auto;margin-bottom:10px">No messages yet</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field-group">
+              <label class="field-label" for="coord-reply-msg">Reply to family</label>
+              <textarea id="coord-reply-msg" rows="2" style="resize:vertical" placeholder="Type your reply..."></textarea>
+            </div>
+            <button class="add-btn" onclick="coordReplyFamily()">Send reply to family</button>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin-top:20px;padding-bottom:8px">
+          <button onclick="resetAllData()" style="background:transparent;border:1px solid var(--red);color:var(--red);font-size:12px;font-family:var(--mono);border-radius:8px;cursor:pointer;padding:10px 16px">Reset all data — start a new event</button>
+        </div>
+      </div>
+
+      <!-- Tasks sub-view -->
+      <div class="subview" id="ssub-tasks">
+        <div class="card progress-wrap">
+          <div class="progress-row">
+            <span class="progress-title">Task completion</span>
+            <span class="progress-pct" id="task-pct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="task-fill" style="width:0%"></div></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:8px;font-family:var(--mono)" id="task-count-label">0 of 0 tasks done</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">All tasks</div>
+          <div id="task-list"></div>
+          <div class="sep"></div>
+          <div class="section-label">Add new task</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field-group">
+              <label class="field-label" for="t-name">Task <span class="req">*</span></label>
+              <input type="text" id="t-name" placeholder="What needs to happen">
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="t-assign">Assigned to</label>
+                <input type="text" id="t-assign" placeholder="Name">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="t-deadline">Deadline</label>
+                <input type="text" id="t-deadline" placeholder="e.g. Mon 4pm">
+              </div>
+            </div>
+            <button class="add-btn" onclick="addTask()">+ Add task</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Planning sub-view -->
+      <div class="subview" id="ssub-planning">
+        <div class="card">
+          <div class="card-title">Planning timeline</div>
+          <div id="planning-list"></div>
+          <div class="sep"></div>
+          <div class="section-label">Add planning task</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field-group">
+              <label class="field-label" for="pl-name">Task <span class="req">*</span></label>
+              <input type="text" id="pl-name" placeholder="e.g. Final guest count">
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="pl-date">Due date</label>
+                <input type="date" id="pl-date">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="pl-owner">Owner</label>
+                <input type="text" id="pl-owner" placeholder="Name">
+              </div>
+            </div>
+            <button class="add-btn" onclick="addPlan()">+ Add task</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comms sub-view -->
+      <div class="subview" id="ssub-comms">
+        <div class="card">
+          <div class="card-title">Internal messages</div>
+          <div id="msg-list"></div>
+          <div class="sep"></div>
+          <div class="section-label">Send message</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field-row">
+              <div class="field-group">
+                <label class="field-label" for="c-sender">Your name</label>
+                <input type="text" id="c-sender" placeholder="Name">
+              </div>
+              <div class="field-group" style="flex:0 0 130px">
+                <label class="field-label" for="c-tag">Type</label>
+                <select id="c-tag">
+                  <option value="update">📢 Update</option>
+                  <option value="urgent">🚨 Urgent</option>
+                  <option value="info">ℹ️ Info</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="c-text">Message <span class="req">*</span></label>
+              <input type="text" id="c-text" placeholder="Type your message...">
+            </div>
+            <button class="send-btn" onclick="sendMsg()">Send message</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="nav('today',this)" data-nav-target="today">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Today</div>
+    </button>
+    <button class="nav-item" onclick="nav('functions',this)" data-nav-target="functions">
+      <div class="nav-icon">👗</div>
+      <div class="nav-label">Functions</div>
+    </button>
+    <button class="nav-item" onclick="nav('guests',this)" data-nav-target="guests">
+      <div class="nav-icon">👥</div>
+      <div class="nav-label">Guests</div>
+    </button>
+    <button class="nav-item" onclick="nav('vendors',this)" data-nav-target="vendors">
+      <div class="nav-icon">🧑‍🤝‍🧑</div>
+      <div class="nav-label">Vendors</div>
+    </button>
+    <button class="nav-item" onclick="nav('setup',this)" data-nav-target="setup">
+      <div class="nav-icon">⚙️</div>
+      <div class="nav-label">Setup</div>
+    </button>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// === PERSISTENCE LAYER ===
+var STORAGE_KEY = 'eventos_mark_vii';
+
+function saveState(){
+  try {
+    var state = {
+      tasks: tasks,
+      messages: messages,
+      arrivals: arrivals,
+      vehicles: vehicles,
+      hotels: hotels,
+      funcs: funcs,
+      planning: planning,
+      guests: guests,
+      familyRSVPs: familyRSVPs,
+      familyMessages: familyMessages,
+      avIdx: avIdx,
+      vendorListHTML: document.getElementById('vendor-list') ? document.getElementById('vendor-list').innerHTML : null,
+      backupListHTML: document.getElementById('backup-list') ? document.getElementById('backup-list').innerHTML : null,
+      timelineListHTML: document.getElementById('timeline-list') ? document.getElementById('timeline-list').innerHTML : null,
+      switchLogHTML: document.getElementById('switch-log') ? document.getElementById('switch-log').innerHTML : null,
+      switchLogVisible: document.getElementById('switch-log-card') ? document.getElementById('switch-log-card').style.display === 'block' : false
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e) { /* ignore */ }
+}
+
+function loadState(){
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    var s = JSON.parse(raw);
+    if (Array.isArray(s.tasks)) tasks = s.tasks;
+    if (Array.isArray(s.messages)) messages = s.messages;
+    if (Array.isArray(s.arrivals)) arrivals = s.arrivals;
+    if (Array.isArray(s.vehicles)) vehicles = s.vehicles;
+    if (Array.isArray(s.hotels)) hotels = s.hotels;
+    if (Array.isArray(s.funcs)) funcs = s.funcs;
+    if (Array.isArray(s.planning)) planning = s.planning;
+    if (Array.isArray(s.guests)) guests = s.guests;
+    if (Array.isArray(s.familyRSVPs)) familyRSVPs = s.familyRSVPs;
+    if (Array.isArray(s.familyMessages)) familyMessages = s.familyMessages;
+    if (typeof s.avIdx === 'number') avIdx = s.avIdx;
+    if (s.vendorListHTML && document.getElementById('vendor-list')) document.getElementById('vendor-list').innerHTML = s.vendorListHTML;
+    if (s.backupListHTML && document.getElementById('backup-list')) document.getElementById('backup-list').innerHTML = s.backupListHTML;
+    if (s.timelineListHTML && document.getElementById('timeline-list')) document.getElementById('timeline-list').innerHTML = s.timelineListHTML;
+    if (s.switchLogHTML && document.getElementById('switch-log')) document.getElementById('switch-log').innerHTML = s.switchLogHTML;
+    if (s.switchLogVisible && document.getElementById('switch-log-card')) document.getElementById('switch-log-card').style.display = 'block';
+  } catch(e) { /* ignore */ }
+}
+
+function resetAllData(){
+  if (!confirm('Wipe all data and start fresh? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+var tasks=[];
+
+var messages=[];
+
+var arrivals=[];
+var vehicles=[];
+var hotels=[];
+
+var funcs=[];
+
+var planning=[];
+
+var guests=[];
+var familyRSVPs=[];
+var familyMessages=[];
+
+function getTime(){
+  var now=new Date();
+  var h=now.getHours(),m=now.getMinutes();
+  var ap=h>=12?'PM':'AM';h=h%12||12;
+  return h+':'+(m<10?'0':'')+m+' '+ap;
+}
+
+var _toastTimer = null;
+function flagInputError(id){
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('input-error');
+  el.focus();
+  var clear = function(){ el.classList.remove('input-error'); el.removeEventListener('input', clear); el.removeEventListener('focus', clear); };
+  el.addEventListener('input', clear);
+  el.addEventListener('focus', clear);
+}
+function toast(msg, undoFn){
+  var t=document.getElementById('toast');
+  if(_toastTimer){clearTimeout(_toastTimer);_toastTimer=null;}
+  t.innerHTML = '';
+  var span = document.createElement('span');
+  span.textContent = msg;
+  t.appendChild(span);
+  if (typeof undoFn === 'function'){
+    var u = document.createElement('span');
+    u.textContent = 'Undo';
+    u.className = 'toast-undo';
+    u.onclick = function(){
+      try { undoFn(); } catch(e){}
+      t.classList.remove('show');
+      _toastTimer = null;
+    };
+    t.appendChild(u);
+    t.classList.add('show');
+    _toastTimer = setTimeout(function(){t.classList.remove('show');_toastTimer=null;},5000);
+  } else {
+    t.classList.add('show');
+    _toastTimer = setTimeout(function(){t.classList.remove('show');_toastTimer=null;},2200);
+  }
+}
+
+function nav(id,btn){
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('section-'+id).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('scroll-area').scrollTop=0;
+  if (id === 'today'){
+    if (typeof renderTodaySnapshot === 'function') renderTodaySnapshot();
+    if (typeof renderTodayMessagesPreview === 'function') renderTodayMessagesPreview();
+    if (typeof renderAttentionPile === 'function') renderAttentionPile();
+    if (typeof renderOnboarding === 'function') renderOnboarding();
+  }
+}
+
+function updateDashProgress(){
+  var done=tasks.filter(function(t){return t.done;}).length;
+  var pct=Math.round(done/tasks.length*100);
+  document.getElementById('dash-pct').textContent=pct+'%';
+  document.getElementById('dash-fill').style.width=pct+'%';
+  document.getElementById('m-done').textContent=done;
+  document.getElementById('m-tasks').textContent=tasks.length;
+  document.getElementById('m-vendors').textContent=document.querySelectorAll('.vendor-item').length;
+}
+
+function renderTasks(){
+  var done=tasks.filter(function(t){return t.done;}).length;
+  var pct=Math.round(done/tasks.length*100);
+  document.getElementById('task-pct').textContent=pct+'%';
+  document.getElementById('task-fill').style.width=pct+'%';
+  document.getElementById('task-count-label').textContent=done+' of '+tasks.length+' tasks done';
+  var html='';
+  tasks.forEach(function(t){
+    html+='<div class="task-item"><div class="task-cb'+(t.done?' done':'')+'" onclick="toggleTask('+t.id+')">'+(t.done?'✓':'')+'</div><div class="task-body"><div class="task-name'+(t.done?' done':'')+'">'+t.name+'</div><div class="task-meta">'+t.assignee+' · '+t.deadline+'</div></div></div>';
+  });
+  document.getElementById('task-list').innerHTML=html;
+  updateDashProgress();
+}
+
+function toggleTask(id){
+  tasks.forEach(function(t){if(t.id===id){t.done=!t.done;}});
+  renderTasks(); saveState(); toast('Task updated');
+}
+
+function addTask(){
+  var n=document.getElementById('t-name').value.trim();
+  var a=document.getElementById('t-assign').value.trim();
+  var d=document.getElementById('t-deadline').value.trim();
+  if(!n){toast('Please enter a task name');flagInputError('t-name');return;}
+  tasks.push({id:Date.now(),name:n,assignee:a||'Unassigned',done:false,deadline:d||'TBD'});
+  document.getElementById('t-name').value='';
+  document.getElementById('t-assign').value='';
+  document.getElementById('t-deadline').value='';
+  renderTasks(); saveState(); toast('Task added');
+}
+
+function renderMessages(){
+  var tagMap={update:{cls:'b-green',icon:'📢'},urgent:{cls:'b-red',icon:'🚨'},info:{cls:'b-blue',icon:'ℹ️'},system:{cls:'b-yellow',icon:'⚙️'}};
+  var html='';
+  messages.slice().reverse().forEach(function(m){
+    var t=tagMap[m.tag]||tagMap.info;
+    html+='<div class="msg-item"><div class="msg-top"><div class="msg-sender">'+m.sender+'</div><span class="badge '+t.cls+'">'+t.icon+' '+m.tag+'</span><span class="msg-time">'+m.time+'</span></div><div class="msg-body">'+m.text+'</div></div>';
+  });
+  document.getElementById('msg-list').innerHTML=html;
+}
+
+function sendMsg(){
+  var s=document.getElementById('c-sender').value.trim()||'You';
+  var txt=document.getElementById('c-text').value.trim();
+  var tag=document.getElementById('c-tag').value;
+  if(!txt){toast('Please type a message');flagInputError('c-text');return;}
+  messages.push({sender:s,tag:tag,text:txt,time:getTime()});
+  document.getElementById('c-text').value='';
+  renderMessages(); saveState(); toast('Message sent');
+}
+
+function setStatus(btn,vid){
+  var row=btn.parentElement;
+  row.querySelectorAll('.status-btn').forEach(function(b){b.classList.remove('active-status');});
+  btn.classList.add('active-status');
+  messages.push({sender:'System',tag:'update',text:btn.textContent+' — '+document.querySelector('[data-id="'+vid+'"] .vendor-name').textContent,time:getTime()});
+  saveState(); toast('Status updated → '+btn.textContent);
+}
+
+var avPalette=[
+  'background:rgba(76,175,130,0.15);color:var(--green)',
+  'background:rgba(232,197,71,0.15);color:var(--accent)',
+  'background:rgba(224,90,90,0.15);color:var(--red)',
+  'background:rgba(90,158,224,0.15);color:var(--blue)',
+  'background:rgba(224,147,90,0.15);color:var(--orange)',
+];
+var avIdx=6;
+function addVendor(){
+  var n=document.getElementById('v-name').value.trim();
+  var r=document.getElementById('v-role').value.trim();
+  var p=document.getElementById('v-phone').value.trim();
+  if(!n){toast('Please enter a vendor name');flagInputError('v-name');return;}
+  var initials=n.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
+  var style=avPalette[avIdx%avPalette.length];avIdx++;
+  var vid='v'+Date.now();
+  var cleanP = p ? p.replace(/\D/g,'') : '';
+  var phoneHTML = p ? '<div style="display:flex;gap:6px;margin-top:2px"><a class="vendor-phone" href="tel:'+p.replace(/\s/g,'')+'" style="text-decoration:none">📞 '+p+'</a><a href="https://wa.me/'+cleanP+'" target="_blank" style="text-decoration:none;color:var(--green);font-size:11px;margin-top:1px">💬</a></div>' : '';
+  var div=document.createElement('div');
+  div.className='vendor-item';div.setAttribute('data-id',vid);
+  div.innerHTML='<div class="vendor-top"><div class="avatar" style="'+style+'">'+initials+'</div><div class="vendor-meta"><div class="vendor-name">'+n+'</div><div class="vendor-role">'+r+'</div>'+phoneHTML+'</div></div><div class="vendor-status"><div class="status-row" data-vendor="'+vid+'"><button class="status-btn active-status" onclick="setStatus(this,\''+vid+'\')">On the way</button><button class="status-btn" onclick="setStatus(this,\''+vid+'\')">Arrived</button><button class="status-btn" onclick="setStatus(this,\''+vid+'\')">Setup in progress</button><button class="status-btn" onclick="setStatus(this,\''+vid+'\')">Completed</button></div></div>';
+  document.getElementById('vendor-list').appendChild(div);
+  document.getElementById('v-name').value='';
+  document.getElementById('v-role').value='';
+  document.getElementById('v-phone').value='';
+  updateDashProgress(); saveState(); toast('Vendor added — '+n);
+}
+
+function addTimeline(){
+  var time=document.getElementById('new-tl-time').value;
+  var name=document.getElementById('new-tl-name').value.trim();
+  if(!name){toast('Please enter event description');flagInputError('new-tl-name');return;}
+  var div=document.createElement('div');
+  div.className='timeline-item';
+  div.innerHTML='<span class="tl-time">'+(time||'--:--')+'</span><div class="tl-dot-wrap"><div class="tl-dot dot-up"></div></div><div class="tl-body"><div class="tl-name">'+name+'</div><div class="tl-sub"><span class="badge b-gray">Upcoming</span></div></div>';
+  document.getElementById('timeline-list').appendChild(div);
+  document.getElementById('new-tl-time').value='';
+  document.getElementById('new-tl-name').value='';
+  saveState(); toast('Added to timeline');
+}
+
+function addBackup(){
+  var c=document.getElementById('b-cat').value.trim();
+  var n=document.getElementById('b-name').value.trim();
+  var p=document.getElementById('b-phone').value.trim();
+  if(!c){toast('Please enter a category');flagInputError('b-cat');return;}
+  if(!n){toast('Please enter vendor name');flagInputError('b-name');return;}
+  var cleanBp = p ? p.replace(/\D/g,'') : '';
+  var phoneHTML = p ? '<div style="display:flex;gap:6px;margin-top:2px"><a class="backup-phone" href="tel:'+p.replace(/\s/g,'')+'" style="text-decoration:none">📞 '+p+'</a><a href="https://wa.me/'+cleanBp+'" target="_blank" style="text-decoration:none;color:var(--green);font-size:11px">💬</a></div>' : '';
+  var div=document.createElement('div');
+  div.className='backup-item';
+  div.innerHTML='<div class="backup-cat">'+c+'</div><div class="backup-info"><div class="backup-name">'+n+'</div>'+phoneHTML+'</div><button class="switch-btn" onclick="activateBackup(this,\''+n+'\',\''+c+'\')">Switch</button>';
+  document.getElementById('backup-list').appendChild(div);
+  document.getElementById('b-cat').value='';document.getElementById('b-name').value='';document.getElementById('b-phone').value='';
+  saveState(); toast('Backup vendor added');
+}
+
+// Improved category-to-role matching: handles common Indian wedding vendor terminology
+function matchVendorByCategory(allVendors, cat){
+  var catWords = cat.toLowerCase().split(/[\s\/&\-,]+/).filter(function(w){return w.length>2;});
+  // Word equivalences — backup category word maps to these vendor role words
+  var equiv = {
+    'florist': ['florist','flower','flora','decor','decorator','bloom'],
+    'flower': ['florist','flower','flora','decor','bloom'],
+    'decorator': ['decor','decorator','florist','flora','bloom'],
+    'catering': ['catering','caterer','food','f&b','fnb'],
+    'caterer': ['catering','caterer','food'],
+    'photography': ['photo','photography','photographer','lens','video','videography'],
+    'photographer': ['photo','photography','photographer','lens'],
+    'video': ['video','videography','photo','photography','lens'],
+    'dj': ['dj','music','sound','audio','av'],
+    'music': ['dj','music','sound','audio'],
+    'sound': ['dj','music','sound','audio','av'],
+    'transport': ['transport','travel','vehicle','car','cab'],
+    'tent': ['tent','furniture','seating'],
+    'lighting': ['lighting','av','light'],
+    'mehendi': ['mehendi','henna']
+  };
+  for (var i=0; i<allVendors.length; i++){
+    if (allVendors[i].dataset.replaced) continue; // skip already-replaced
+    var roleEl = allVendors[i].querySelector('.vendor-role');
+    var role = roleEl ? roleEl.textContent.toLowerCase() : '';
+    for (var j=0; j<catWords.length; j++){
+      var cw = catWords[j];
+      // Direct substring match
+      if (role.indexOf(cw) >= 0) return allVendors[i];
+      // Equivalence-based match
+      var equivList = equiv[cw] || [];
+      for (var k=0; k<equivList.length; k++){
+        if (role.indexOf(equivList[k]) >= 0) return allVendors[i];
+      }
+    }
+  }
+  return null;
+}
+
+function activateBackup(btn,name,cat){
+  btn.textContent='✓ Active';btn.classList.add('activated');btn.disabled=true;
+  var t=getTime();
+
+  // Pull phone from the same backup-item row
+  var backupRow = btn.closest('.backup-item');
+  var phoneEl = backupRow ? backupRow.querySelector('.backup-phone') : null;
+  var phone = phoneEl ? phoneEl.textContent.trim() : '';
+
+  // Find the original vendor in main vendor list to replace
+  var vendorList = document.getElementById('vendor-list');
+  var allVendors = vendorList ? vendorList.querySelectorAll('.vendor-item:not([data-replaced])') : [];
+  var replacedOriginal = matchVendorByCategory(allVendors, cat);
+
+  // Build new vendor card for the activated backup
+  var initials = name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
+  var style = avPalette[avIdx % avPalette.length]; avIdx++;
+  var vid = 'v' + Date.now();
+  var cleanAb = phone ? phone.replace(/\D/g,'') : '';
+  var phoneHTML = phone ? '<div style="display:flex;gap:6px;margin-top:2px"><a class="vendor-phone" href="tel:'+phone.replace(/\s/g,'')+'" style="text-decoration:none">📞 '+phone+'</a><a href="https://wa.me/'+cleanAb+'" target="_blank" style="text-decoration:none;color:var(--green);font-size:11px">💬</a></div>' : '';
+  var newCardHTML =
+    '<div class="vendor-item" data-id="'+vid+'" style="background:rgba(76,175,130,0.05);border-left:2px solid var(--green);padding-left:10px;margin-left:-10px">'
+      +'<div class="vendor-top">'
+        +'<div class="avatar" style="'+style+'">'+initials+'</div>'
+        +'<div class="vendor-meta">'
+          +'<div class="vendor-name">'+name+' <span class="badge b-green" style="margin-left:4px;font-size:9px">BACKUP ACTIVE</span></div>'
+          +'<div class="vendor-role">'+cat+'</div>'
+          +phoneHTML
+        +'</div>'
+      +'</div>'
+      +'<div class="vendor-status">'
+        +'<div class="status-row" data-vendor="'+vid+'">'
+          +'<button class="status-btn active-status" onclick="setStatus(this,\''+vid+'\')">On the way</button>'
+          +'<button class="status-btn" onclick="setStatus(this,\''+vid+'\')">Arrived</button>'
+          +'<button class="status-btn" onclick="setStatus(this,\''+vid+'\')">Setup in progress</button>'
+          +'<button class="status-btn" onclick="setStatus(this,\''+vid+'\')">Completed</button>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+
+  if (replacedOriginal){
+    var origNameEl = replacedOriginal.querySelector('.vendor-name');
+    var origName = origNameEl ? origNameEl.textContent : 'Original vendor';
+    replacedOriginal.style.opacity = '0.45';
+    replacedOriginal.dataset.replaced = '1';
+    if (origNameEl){
+      origNameEl.innerHTML = '<s>'+origName+'</s> <span class="badge b-red" style="margin-left:4px;font-size:9px">REPLACED</span>';
+    }
+    replacedOriginal.insertAdjacentHTML('afterend', newCardHTML);
+  } else if (vendorList){
+    vendorList.insertAdjacentHTML('beforeend', newCardHTML);
+  }
+
+  var logCard=document.getElementById('switch-log-card');
+  logCard.style.display='block';
+  var entry=document.createElement('div');
+  entry.style='padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2)';
+  var origMsg = replacedOriginal ? ' (replaced original in vendor list)' : ' (added to vendor list)';
+  entry.innerHTML='<span class="badge b-yellow" style="margin-right:6px">Switched</span>'+name+' activated for <strong style="color:var(--text)">'+cat+'</strong> at '+t+origMsg;
+  document.getElementById('switch-log').prepend(entry);
+
+  messages.push({sender:'System',tag:'urgent',text:'BACKUP ACTIVATED: '+name+' is now handling '+cat+'. Update your team.',time:t});
+  updateDashProgress();
+  saveState();
+  toast('Backup activated — '+name);
+}
+
+// === LOGISTICS ===
+function gsubnav(id, btn){
+  document.querySelectorAll('#section-guests .subview').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('#section-guests .subtab').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('gsub-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function modeIcon(m){ return m==='Flight'?'✈️':m==='Train'?'🚆':'🚗'; }
+function arrivalStatusBadge(s){
+  if (s==='picked') return '<span class="badge b-green"><span class="status-dot status-dot-done"></span>Picked up</span>';
+  if (s==='landed') return '<span class="badge b-yellow"><span class="status-dot status-dot-progress"></span>Landed</span>';
+  return '<span class="badge b-gray"><span class="status-dot status-dot-pending"></span>Pending</span>';
+}
+function vehicleStatusBadge(s){
+  if (s==='completed') return '<span class="badge b-green"><span class="status-dot status-dot-done"></span>Completed</span>';
+  if (s==='dispatched') return '<span class="badge b-yellow"><span class="status-dot status-dot-progress"></span>En route</span>';
+  return '<span class="badge b-gray"><span class="status-dot status-dot-pending"></span>Standby</span>';
+}
+function hotelStatusBadge(s){
+  if (s==='checked') return '<span class="badge b-green"><span class="status-dot status-dot-done"></span>Checked in</span>';
+  return '<span class="badge b-gray"><span class="status-dot status-dot-pending"></span>Pending</span>';
+}
+
+function renderArrivals(){
+  var html='';
+  if (!arrivals.length){ html='<div class="empty"><div class="empty-icon">✈️</div><div>No arrivals yet</div><div style="font-size:12px;color:var(--text3);margin-top:6px">Add your first arrival below to start tracking guests as they land</div></div>'; }
+  arrivals.forEach(function(a){
+    var cleanPhone = a.phone ? a.phone.replace(/\D/g,'') : '';
+    var phoneLink = a.phone ? '<a href="tel:'+a.phone.replace(/\s/g,'')+'" class="log-link">📞 Call</a><a href="https://wa.me/'+cleanPhone+'" target="_blank" class="log-link green">💬 WhatsApp</a>' : '';
+    var nextLabel = a.status==='pending' ? 'Mark landed' : a.status==='landed' ? 'Mark picked up' : 'Mark pending';
+    html+='<div class="log-item">'
+      +'<div class="log-row1"><div class="log-name">'+a.guest+'</div><div class="log-time">'+a.time+'</div></div>'
+      +'<div class="log-meta">'+modeIcon(a.mode)+' '+a.mode+' <strong>'+a.num+'</strong> from '+a.from+' &nbsp;·&nbsp; '+arrivalStatusBadge(a.status)+'</div>'
+      +'<div class="log-actions">'+phoneLink+'<a class="log-link green" onclick="cycleArrival('+a.id+')">'+nextLabel+'</a><button class="log-del" onclick="delArrival('+a.id+')">Delete</button></div>'
+    +'</div>';
+  });
+  document.getElementById('arrivals-list').innerHTML=html;
+}
+
+function addArrival(){
+  var g=document.getElementById('ar-guest').value.trim();
+  var m=document.getElementById('ar-mode').value;
+  var n=document.getElementById('ar-num').value.trim();
+  var f=document.getElementById('ar-from').value.trim();
+  var t=document.getElementById('ar-time').value;
+  var p=document.getElementById('ar-phone').value.trim();
+  if(!g){toast('Please enter guest name');flagInputError('ar-guest');return;}
+  arrivals.push({id:Date.now(),guest:g,mode:m,num:n||'TBD',from:f||'TBD',time:t||'--:--',phone:p,status:'pending'});
+  ['ar-guest','ar-num','ar-from','ar-time','ar-phone'].forEach(function(i){document.getElementById(i).value='';});
+  renderArrivals(); saveState(); toast('Arrival added');
+}
+function cycleArrival(id){
+  arrivals.forEach(function(a){if(a.id===id){a.status = a.status==='pending' ? 'landed' : a.status==='landed' ? 'picked' : 'pending';}});
+  renderArrivals(); saveState(); toast('Status updated');
+}
+function delArrival(id){
+  var idx = -1, removed = null;
+  for (var i=0; i<arrivals.length; i++){ if(arrivals[i].id===id){ idx=i; removed=arrivals[i]; break; } }
+  if (idx<0) return;
+  arrivals.splice(idx,1);
+  renderArrivals(); saveState();
+  toast('Arrival removed', function(){
+    arrivals.splice(idx, 0, removed);
+    renderArrivals(); saveState();
+    toast('Arrival restored');
+  });
+}
+
+function renderVehicles(){
+  var html='';
+  if (!vehicles.length){ html='<div class="empty"><div class="empty-icon">🚗</div><div>No vehicles assigned yet</div><div style="font-size:12px;color:var(--text3);margin-top:6px">Add a driver and pickup below to dispatch your first vehicle</div></div>'; }
+  vehicles.forEach(function(v){
+    var cleanVPhone = v.phone ? v.phone.replace(/\D/g,'') : '';
+    var phoneLink = v.phone ? '<a href="tel:'+v.phone.replace(/\s/g,'')+'" class="log-link">📞 Call driver</a><a href="https://wa.me/'+cleanVPhone+'" target="_blank" class="log-link green">💬 WhatsApp</a>' : '';
+    var nextLabel = v.status==='standby' ? 'Mark dispatched' : v.status==='dispatched' ? 'Mark completed' : 'Mark standby';
+    html+='<div class="log-item">'
+      +'<div class="log-row1"><div class="log-name">'+v.driver+' · '+v.car+'</div><div class="log-time">'+v.time+'</div></div>'
+      +'<div class="log-meta">Pickup: <strong>'+v.pickup+'</strong><br/>'+v.fromLoc+' → '+v.toLoc+' &nbsp;·&nbsp; '+vehicleStatusBadge(v.status)+'</div>'
+      +'<div class="log-actions">'+phoneLink+'<a class="log-link green" onclick="cycleVehicle('+v.id+')">'+nextLabel+'</a><button class="log-del" onclick="delVehicle('+v.id+')">Delete</button></div>'
+    +'</div>';
+  });
+  document.getElementById('vehicles-list').innerHTML=html;
+}
+
+function addVehicle(){
+  var d=document.getElementById('vh-driver').value.trim();
+  var c=document.getElementById('vh-car').value.trim();
+  var p=document.getElementById('vh-phone').value.trim();
+  var pk=document.getElementById('vh-pickup').value.trim();
+  var f=document.getElementById('vh-from').value.trim();
+  var to=document.getElementById('vh-to').value.trim();
+  var t=document.getElementById('vh-time').value;
+  if(!d){toast('Please enter driver name');flagInputError('vh-driver');return;}
+  vehicles.push({id:Date.now(),driver:d,car:c||'TBD',phone:p,pickup:pk||'TBD',fromLoc:f||'TBD',toLoc:to||'TBD',time:t||'--:--',status:'standby'});
+  ['vh-driver','vh-car','vh-phone','vh-pickup','vh-from','vh-to','vh-time'].forEach(function(i){document.getElementById(i).value='';});
+  renderVehicles(); saveState(); toast('Vehicle added');
+}
+function cycleVehicle(id){
+  vehicles.forEach(function(v){if(v.id===id){v.status = v.status==='standby' ? 'dispatched' : v.status==='dispatched' ? 'completed' : 'standby';}});
+  renderVehicles(); saveState(); toast('Status updated');
+}
+function delVehicle(id){
+  var idx = -1, removed = null;
+  for (var i=0; i<vehicles.length; i++){ if(vehicles[i].id===id){ idx=i; removed=vehicles[i]; break; } }
+  if (idx<0) return;
+  vehicles.splice(idx,1);
+  renderVehicles(); saveState();
+  toast('Vehicle removed', function(){
+    vehicles.splice(idx, 0, removed);
+    renderVehicles(); saveState();
+    toast('Vehicle restored');
+  });
+}
+
+function renderHotels(){
+  var html='';
+  if (!hotels.length){ html='<div class="empty"><div class="empty-icon">🏨</div><div>No hotel allocations yet</div><div style="font-size:12px;color:var(--text3);margin-top:6px">Allocate guests to hotels and rooms below</div></div>'; }
+  hotels.forEach(function(h){
+    var nextLabel = h.status==='pending' ? 'Mark checked in' : 'Mark pending';
+    html+='<div class="log-item">'
+      +'<div class="log-row1"><div class="log-name">'+h.guest+'</div><div class="log-time">Room '+h.room+'</div></div>'
+      +'<div class="log-meta">🏨 <strong>'+h.hotel+'</strong><br/>'+h.checkin+' → '+h.checkout+' &nbsp;·&nbsp; '+hotelStatusBadge(h.status)+'</div>'
+      +'<div class="log-actions"><a class="log-link green" onclick="cycleHotel('+h.id+')">'+nextLabel+'</a><button class="log-del" onclick="delHotel('+h.id+')">Delete</button></div>'
+    +'</div>';
+  });
+  document.getElementById('hotels-list').innerHTML=html;
+}
+function addHotel(){
+  var g=document.getElementById('ht-guest').value.trim();
+  var hl=document.getElementById('ht-hotel').value.trim();
+  var r=document.getElementById('ht-room').value.trim();
+  var ci=document.getElementById('ht-checkin').value;
+  var co=document.getElementById('ht-checkout').value;
+  if(!g){toast('Please enter guest name');flagInputError('ht-guest');return;}
+  hotels.push({id:Date.now(),guest:g,hotel:hl||'TBD',room:r||'TBD',checkin:ci||'TBD',checkout:co||'TBD',status:'pending'});
+  ['ht-guest','ht-hotel','ht-room','ht-checkin','ht-checkout'].forEach(function(i){document.getElementById(i).value='';});
+  renderHotels(); saveState(); toast('Hotel allocation added');
+}
+function cycleHotel(id){
+  hotels.forEach(function(h){if(h.id===id){h.status = h.status==='pending' ? 'checked' : 'pending';}});
+  renderHotels(); saveState(); toast('Status updated');
+}
+function delHotel(id){
+  var idx = -1, removed = null;
+  for (var i=0; i<hotels.length; i++){ if(hotels[i].id===id){ idx=i; removed=hotels[i]; break; } }
+  if (idx<0) return;
+  hotels.splice(idx,1);
+  renderHotels(); saveState();
+  toast('Allocation removed', function(){
+    hotels.splice(idx, 0, removed);
+    renderHotels(); saveState();
+    toast('Allocation restored');
+  });
+}
+
+// === CSV EXPORT ===
+function csvEscape(val){
+  if (val === null || val === undefined) return '';
+  var s = String(val);
+  if (s.indexOf(',') !== -1 || s.indexOf('"') !== -1 || s.indexOf('\n') !== -1) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+function exportToCSV(type){
+  var headers, rows, filename;
+  var today = new Date().toISOString().slice(0,10);
+  if (type === 'arrivals'){
+    if (!arrivals.length){ toast('No arrivals to export'); return; }
+    headers = ['Guest','Mode','Flight/Train No.','From','Time','Phone','Status'];
+    rows = arrivals.map(function(a){
+      return [a.guest, a.mode, a.num, a.from, a.time, a.phone || '', a.status];
+    });
+    filename = 'arrivals_' + today + '.csv';
+  } else if (type === 'vehicles'){
+    if (!vehicles.length){ toast('No vehicles to export'); return; }
+    headers = ['Driver','Car/Plate','Phone','Picking Up','From','To','Time','Status'];
+    rows = vehicles.map(function(v){
+      return [v.driver, v.car, v.phone || '', v.pickup, v.fromLoc, v.toLoc, v.time, v.status];
+    });
+    filename = 'vehicles_' + today + '.csv';
+  } else if (type === 'hotels'){
+    if (!hotels.length){ toast('No hotel allocations to export'); return; }
+    headers = ['Guest','Hotel','Room','Check-in','Check-out','Status'];
+    rows = hotels.map(function(h){
+      return [h.guest, h.hotel, h.room, h.checkin, h.checkout, h.status];
+    });
+    filename = 'hotels_' + today + '.csv';
+  } else { return; }
+
+  var csv = headers.map(csvEscape).join(',') + '\n';
+  csv += rows.map(function(r){ return r.map(csvEscape).join(','); }).join('\n');
+
+  // BOM for Excel to read UTF-8 correctly
+  var blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 100);
+  toast('Exported ' + rows.length + ' row' + (rows.length===1?'':'s'));
+}
+
+// === SETUP SUB-NAV ===
+function ssubnav(id, btn){
+  document.querySelectorAll('#section-setup .subview').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('#section-setup .subtab').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('ssub-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// === SEARCH FILTER (works on any list of immediate child items) ===
+function filterList(listId, query){
+  var list = document.getElementById(listId);
+  if (!list) return;
+  var q = query.trim().toLowerCase();
+  Array.prototype.forEach.call(list.children, function(child){
+    if (!q){ child.style.display = ''; return; }
+    var text = (child.textContent || '').toLowerCase();
+    child.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+  });
+}
+
+// === SMART ROLE CHIP (vendor) ===
+function setVendorRole(role){
+  var input = document.getElementById('v-role');
+  if (input){ input.value = role; input.focus(); }
+}
+
+// === BULK PASTE GUESTS ===
+function toggleBulkPaste(){
+  var p = document.getElementById('bulk-paste-panel');
+  if (!p) return;
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+  if (p.style.display === ''){
+    setTimeout(function(){ var t = document.getElementById('bulk-paste-text'); if (t) t.focus(); }, 50);
+  }
+}
+function bulkAddGuests(){
+  var text = document.getElementById('bulk-paste-text').value.trim();
+  if (!text){ toast('Paste some rows first'); return; }
+  var lines = text.split(/\r?\n/);
+  var added = 0;
+  lines.forEach(function(line, idx){
+    line = line.trim();
+    if (!line) return;
+    var parts = line.split(/\t|,/).map(function(p){return p.trim();});
+    // skip header row if first line looks like one
+    if (idx === 0 && /name|guest/i.test(parts[0]) && parts.length > 1) return;
+    var name = parts[0];
+    if (!name) return;
+    var pax = parseInt(parts[1], 10) || 1;
+    var from = parts[2] || '';
+    var room = parts[3] || '';
+    var notes = parts[4] || '';
+    guests.push({id: Date.now() + idx, name: name, pax: pax, from: from, room: room, notes: notes});
+    added++;
+  });
+  if (!added){ toast('No valid rows found'); return; }
+  renderGuests(); saveState();
+  document.getElementById('bulk-paste-text').value = '';
+  toggleBulkPaste();
+  toast('Added ' + added + ' guest' + (added===1?'':'s'));
+}
+
+// === FIRST-RUN ONBOARDING ===
+function isFirstRun(){
+  var hasFuncs = (typeof funcs !== 'undefined' && funcs.length > 0);
+  var hasGuests = (typeof guests !== 'undefined' && guests.length > 0);
+  var hasArrivals = arrivals.length > 0;
+  var hasTasks = tasks.length > 0;
+  var hasVendors = document.querySelectorAll('#vendor-list .vendor-item').length > 0;
+  return !hasFuncs && !hasGuests && !hasArrivals && !hasTasks && !hasVendors;
+}
+function dismissOnboarding(){
+  try { localStorage.setItem('eventos_onboarding_dismissed', '1'); } catch(e){}
+  var el = document.getElementById('onboarding-card');
+  if (el) el.style.display = 'none';
+}
+function renderOnboarding(){
+  var el = document.getElementById('onboarding-card');
+  if (!el) return;
+  var dismissed = false;
+  try { dismissed = localStorage.getItem('eventos_onboarding_dismissed') === '1'; } catch(e){}
+  if (dismissed || !isFirstRun()){ el.style.display = 'none'; return; }
+  el.style.display = '';
+}
+function navTo(id){
+  var btn = document.querySelector('[data-nav-target="'+id+'"]');
+  if (btn) nav(id, btn);
+}
+
+// === NEEDS ATTENTION (auto-surface slipping items) ===
+function buildAttentionPile(){
+  var items = [];
+  var now = new Date();
+  var nowMin = now.getHours() * 60 + now.getMinutes();
+  // arrivals landed but no matching pickup
+  arrivals.forEach(function(a){
+    if (a.status !== 'landed') return;
+    var matched = vehicles.some(function(v){ return v.pickup && a.guest && v.pickup.toLowerCase().indexOf(a.guest.split(' ')[0].toLowerCase()) !== -1; });
+    if (!matched) items.push('✈️ <strong>'+a.guest+'</strong> has landed — no pickup assigned');
+  });
+  // vehicles past pickup time but still standby
+  vehicles.forEach(function(v){
+    if (v.status !== 'standby' || !v.time || v.time === '--:--') return;
+    var parts = v.time.split(':');
+    if (parts.length !== 2) return;
+    var min = parseInt(parts[0],10) * 60 + parseInt(parts[1],10);
+    if (isNaN(min)) return;
+    if (min < nowMin - 10){
+      items.push('🚗 <strong>'+v.driver+'</strong> past pickup time ('+v.time+') — still on standby');
+    }
+  });
+  // functions today with no timeline events
+  if (typeof funcs !== 'undefined' && funcs.length){
+    var todayStr = new Date().toISOString().slice(0,10);
+    var todayFunc = funcs.find(function(f){return f.date===todayStr;});
+    var timelineCount = document.querySelectorAll('#timeline-list .timeline-item').length;
+    if (todayFunc && timelineCount === 0){
+      items.push('👗 <strong>'+todayFunc.title+'</strong> is today and has no timeline yet');
+    }
+  }
+  return items;
+}
+function renderAttentionPile(){
+  var el = document.getElementById('attention-pile');
+  if (!el) return;
+  var items = buildAttentionPile();
+  if (!items.length){
+    el.innerHTML = '<div class="ap-title">Needs attention</div><div class="ap-empty">All clear right now ✓</div>';
+    return;
+  }
+  el.innerHTML = '<div class="ap-title">Needs attention</div>' + items.map(function(i){return '<div class="ap-item">'+i+'</div>';}).join('');
+}
+
+// === VENDOR FILTER (primary / backup / all) ===
+function setVendorFilter(filter, btn){
+  document.querySelectorAll('#section-vendors .filter-chip').forEach(function(c){c.classList.remove('active');});
+  btn.classList.add('active');
+  var primaryCard = document.getElementById('vendor-primary-card');
+  var backupCard = document.getElementById('vendor-backup-card');
+  if (filter === 'primary'){
+    primaryCard.style.display = '';
+    backupCard.style.display = 'none';
+  } else if (filter === 'backup'){
+    primaryCard.style.display = 'none';
+    backupCard.style.display = '';
+  } else {
+    primaryCard.style.display = '';
+    backupCard.style.display = '';
+  }
+}
+
+// === TODAY AGGREGATORS ===
+function renderTodaySnapshot(){
+  var el = document.getElementById('today-snapshot');
+  if (!el) return;
+  var todayStr = new Date().toISOString().slice(0,10);
+  // count vendors by status (from DOM since vendors live in DOM)
+  var vendorCount = document.querySelectorAll('#vendor-list .vendor-item').length;
+  var pendingArrivals = arrivals.filter(function(a){return a.status==='pending';}).length;
+  var landed = arrivals.filter(function(a){return a.status==='landed';}).length;
+  var enRoute = vehicles.filter(function(v){return v.status==='dispatched';}).length;
+  var checkedIn = hotels.filter(function(h){return h.status==='checked';}).length;
+  var todayFunc = (typeof funcs !== 'undefined' && funcs.length) ? funcs.find(function(f){return f.date===todayStr;}) : null;
+  var openTasks = tasks.filter(function(t){return !t.done;}).length;
+
+  var lines = [];
+  if (todayFunc){
+    lines.push('🎉 Today: <strong>'+todayFunc.title+'</strong> at '+(todayFunc.time||'TBD')+' — '+(todayFunc.venue||'venue TBD'));
+  } else {
+    lines.push('🗓 No function scheduled today');
+  }
+  lines.push('✈️ '+pendingArrivals+' arrival'+(pendingArrivals===1?'':'s')+' expected · '+landed+' landed, awaiting pickup');
+  lines.push('🚗 '+enRoute+' vehicle'+(enRoute===1?'':'s')+' en route');
+  lines.push('🏨 '+checkedIn+' guest'+(checkedIn===1?'':'s')+' checked in');
+  lines.push('🧑\u200d🤝\u200d🧑 '+vendorCount+' vendor'+(vendorCount===1?'':'s')+' tracked');
+  lines.push('✅ '+openTasks+' open task'+(openTasks===1?'':'s'));
+  el.innerHTML = lines.join('<br>');
+}
+
+function renderTodayMessagesPreview(){
+  var el = document.getElementById('today-messages-preview');
+  if (!el) return;
+  if (!messages || !messages.length){ el.innerHTML = 'No messages yet.'; return; }
+  var recent = messages.slice(-3).reverse();
+  el.innerHTML = recent.map(function(m){
+    var icon = m.tag==='urgent'?'🚨':m.tag==='info'?'ℹ️':'📢';
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="color:var(--text2);font-weight:500">'+icon+' '+m.sender+' <span style="color:var(--text3);font-size:11px;font-family:var(--mono);margin-left:6px">'+m.time+'</span></div><div style="margin-top:2px">'+m.text+'</div></div>';
+  }).join('');
+}
+
+function fmtFnDate(d){
+  if (!d) return 'Date TBD';
+  var dt = new Date(d);
+  if (isNaN(dt)) return d;
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return dt.getDate()+' '+months[dt.getMonth()]+' '+dt.getFullYear();
+}
+
+function renderFunctions(){
+  var html = '';
+  if (!funcs.length){ html = '<div class="empty"><div class="empty-icon">👗</div><div>No functions added yet</div><div style="font-size:12px;color:var(--text3);margin-top:6px">Add Mehendi, Sangeet, Wedding, Reception — one card per function</div></div>'; }
+  funcs.forEach(function(f){
+    html += '<div class="fn-card">'
+      +'<div class="fn-top">'
+        +'<div class="fn-emoji">'+(f.emoji||'🎉')+'</div>'
+        +'<div style="flex:1"><div class="fn-title">'+f.title+'</div><div class="fn-when">'+fmtFnDate(f.date)+(f.time?' · '+f.time:'')+'</div></div>'
+        +'<button class="log-del" onclick="delFunction('+f.id+')">×</button>'
+      +'</div>'
+      +(f.venue?'<div class="fn-row"><strong>Venue</strong><span>'+f.venue+'</span></div>':'')
+      +(f.dress?'<div class="fn-row"><strong>Dress</strong><span>'+f.dress+'</span></div>':'')
+      +(f.theme?'<div class="fn-row"><strong>Theme</strong><span><span class="fn-color" style="background:'+(f.color||'#999')+'"></span>'+f.theme+'</span></div>':'')
+    +'</div>';
+  });
+  document.getElementById('functions-list').innerHTML = html;
+}
+
+function addFunction(){
+  var emoji = document.getElementById('fn-emoji').value.trim() || '🎉';
+  var title = document.getElementById('fn-title').value.trim();
+  var date = document.getElementById('fn-date').value;
+  var time = document.getElementById('fn-time').value;
+  var venue = document.getElementById('fn-venue').value.trim();
+  var dress = document.getElementById('fn-dress').value.trim();
+  var color = document.getElementById('fn-color').value;
+  var theme = document.getElementById('fn-theme').value.trim();
+  if (!title){ toast('Please enter function name'); return; }
+  funcs.push({id:Date.now(),emoji:emoji,title:title,date:date,time:time,venue:venue,dress:dress,color:color,theme:theme});
+  ['fn-emoji','fn-title','fn-date','fn-time','fn-venue','fn-dress','fn-theme'].forEach(function(i){document.getElementById(i).value='';});
+  renderFunctions(); saveState(); toast('Function added');
+}
+function delFunction(id){
+  var idx = -1, removed = null;
+  for (var i=0; i<funcs.length; i++){ if(funcs[i].id===id){ idx=i; removed=funcs[i]; break; } }
+  if (idx<0) return;
+  funcs.splice(idx,1);
+  renderFunctions(); saveState();
+  toast('Function removed', function(){
+    funcs.splice(idx, 0, removed);
+    renderFunctions(); saveState();
+    toast('Function restored');
+  });
+}
+
+function daysUntil(dateStr){
+  if (!dateStr) return null;
+  var d = new Date(dateStr); d.setHours(0,0,0,0);
+  var now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((d - now) / 86400000);
+}
+
+function countdownBadge(dateStr, done){
+  if (done) return '<span class="plan-countdown cd-past">Done</span>';
+  var n = daysUntil(dateStr);
+  if (n === null) return '<span class="plan-countdown cd-far">No date</span>';
+  if (n < 0) return '<span class="plan-countdown cd-soon">'+Math.abs(n)+'d overdue</span>';
+  if (n === 0) return '<span class="plan-countdown cd-soon">Today</span>';
+  if (n === 1) return '<span class="plan-countdown cd-soon">Tomorrow</span>';
+  if (n <= 3) return '<span class="plan-countdown cd-soon">'+n+' days to go</span>';
+  if (n <= 7) return '<span class="plan-countdown cd-near">'+n+' days to go</span>';
+  return '<span class="plan-countdown cd-far">'+n+' days to go</span>';
+}
+
+function renderPlanning(){
+  var html = '';
+  if (!planning.length){ html = '<div class="empty"><div class="empty-icon">📋</div><div>No planning tasks yet</div><div style="font-size:12px;color:var(--text3);margin-top:6px">Track everything that needs to happen before the event below</div></div>'; }
+  var sorted = planning.slice().sort(function(a,b){
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    return (a.date||'9999').localeCompare(b.date||'9999');
+  });
+  sorted.forEach(function(p){
+    html += '<div class="plan-item">'
+      +'<div class="plan-cb'+(p.done?' done':'')+'" onclick="togglePlan('+p.id+')">'+(p.done?'✓':'')+'</div>'
+      +'<div class="plan-body">'
+        +'<div class="plan-name'+(p.done?' done':'')+'">'+p.name+'</div>'
+        +'<div class="plan-meta">'+(p.owner||'Unassigned')+' · '+fmtFnDate(p.date)+'</div>'
+      +'</div>'
+      +countdownBadge(p.date, p.done)
+      +'<button class="log-del" onclick="delPlan('+p.id+')" style="margin-left:6px">×</button>'
+    +'</div>';
+  });
+  document.getElementById('planning-list').innerHTML = html;
+}
+
+function addPlan(){
+  var name = document.getElementById('pl-name').value.trim();
+  var date = document.getElementById('pl-date').value;
+  var owner = document.getElementById('pl-owner').value.trim();
+  if (!name){ toast('Please enter a task'); return; }
+  planning.push({id:Date.now(),name:name,date:date,owner:owner,done:false});
+  ['pl-name','pl-date','pl-owner'].forEach(function(i){document.getElementById(i).value='';});
+  renderPlanning(); saveState(); toast('Planning task added');
+}
+function togglePlan(id){
+  planning.forEach(function(p){if(p.id===id) p.done = !p.done;});
+  renderPlanning(); saveState(); toast('Updated');
+}
+function delPlan(id){
+  var idx = -1, removed = null;
+  for (var i=0; i<planning.length; i++){ if(planning[i].id===id){ idx=i; removed=planning[i]; break; } }
+  if (idx<0) return;
+  planning.splice(idx,1);
+  renderPlanning(); saveState();
+  toast('Task removed', function(){
+    planning.splice(idx, 0, removed);
+    renderPlanning(); saveState();
+    toast('Task restored');
+  });
+}
+
+function renderGuests(){
+  var html = '';
+  if (!guests.length){ html = '<div class="empty"><div class="empty-icon">👥</div><div>No guests added yet</div><div style="font-size:12px;color:var(--text3);margin-top:6px">Build the guest list one entry at a time, or paste from your sheet</div></div>'; }
+  guests.forEach(function(g){
+    html += '<div class="guest-item">'
+      +'<div class="guest-top">'
+        +'<div class="guest-name">'+g.name+'</div>'
+        +'<div class="guest-pax">'+(g.pax||1)+' pax</div>'
+        +'<button class="log-del" onclick="delGuest('+g.id+')">×</button>'
+      +'</div>'
+      +'<div class="guest-meta">'
+        +(g.from?'<strong>From:</strong> '+g.from+'<br>':'')
+        +(g.room?'<strong>Stay:</strong> '+g.room:'')
+      +'</div>'
+      +(g.notes?'<div class="guest-notes">'+g.notes+'</div>':'')
+    +'</div>';
+  });
+  document.getElementById('guests-list').innerHTML = html;
+}
+function addGuest(){
+  var name = document.getElementById('gu-name').value.trim();
+  var pax = parseInt(document.getElementById('gu-pax').value)||1;
+  var from = document.getElementById('gu-from').value.trim();
+  var room = document.getElementById('gu-room').value.trim();
+  var notes = document.getElementById('gu-notes').value.trim();
+  if (!name){ toast('Please enter guest name'); return; }
+  guests.push({id:Date.now(),name:name,pax:pax,from:from,room:room,notes:notes});
+  ['gu-name','gu-pax','gu-from','gu-room','gu-notes'].forEach(function(i){document.getElementById(i).value='';});
+  renderGuests(); saveState(); toast('Guest added');
+}
+function delGuest(id){
+  var idx = -1, removed = null;
+  for (var i=0; i<guests.length; i++){ if(guests[i].id===id){ idx=i; removed=guests[i]; break; } }
+  if (idx<0) return;
+  guests.splice(idx,1);
+  renderGuests(); saveState();
+  toast('Guest removed', function(){
+    guests.splice(idx, 0, removed);
+    renderGuests(); saveState();
+    toast('Guest restored');
+  });
+}
+
+// Convert hardcoded vendor and backup phone divs to tel: links on load (since static HTML has them as divs)
+function makePhonesTappable(){
+  document.querySelectorAll('.vendor-phone, .backup-phone').forEach(function(el){
+    if (el.tagName === 'A') return; // already a link
+    var phone = el.textContent.trim();
+    if (!phone) return;
+    var clean = phone.replace(/\s/g,'');
+    var newEl = document.createElement('a');
+    newEl.className = el.className;
+    newEl.href = 'tel:' + clean;
+    newEl.style.textDecoration = 'none';
+    newEl.textContent = phone;
+    el.parentNode.replaceChild(newEl, el);
+  });
+}
+
+// Enter-to-submit: when user presses Enter in any text/tel/number input, click the nearest add-btn / send-btn
+function bindEnterToSubmit(){
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    var t = e.target;
+    if (!t || !t.tagName) return;
+    var tag = t.tagName.toLowerCase();
+    if (tag === 'textarea') return; // allow newlines in textareas
+    if (tag !== 'input' && tag !== 'select') return;
+    var typeOk = !t.type || ['text','tel','number','search','email','date','time'].indexOf(t.type) !== -1;
+    if (!typeOk && tag !== 'select') return;
+    // walk up to the form container, find the next add-btn or send-btn
+    var p = t.parentElement;
+    var btn = null;
+    while (p && !btn){
+      btn = p.querySelector('.add-btn, .send-btn, .fam-copy-btn');
+      p = p.parentElement;
+      if (p && p.classList && p.classList.contains('section')) break;
+    }
+    if (btn){ e.preventDefault(); btn.click(); }
+  });
+}
+
+// === FAMILY PORTAL ===
+
+function isFamilyMode(){
+  return window.location.hash === '#family';
+}
+
+function showFamilyMode(){
+  document.getElementById('family-mode').style.display = 'block';
+  document.getElementById('coordinator-app').style.display = 'none';
+  // Update header from event label if user has set one (coordinator side)
+  var evLabel = (typeof tasks!=='undefined') ? document.getElementById('event-label') : null;
+  // If coordinator has set event label, show it on family screen too
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw){
+      var s = JSON.parse(raw);
+      if (s.eventName) document.getElementById('fam-event-name').textContent = s.eventName;
+    }
+  } catch(e){}
+  renderFamilyInfo();
+  renderFamilyChat();
+  renderFamilyProgress();
+  checkExistingRSVP();
+}
+
+function showCoordinatorMode(){
+  document.getElementById('family-mode').style.display = 'none';
+  document.getElementById('coordinator-app').style.display = 'flex';
+}
+
+function famNav(id, btn){
+  document.querySelectorAll('.family-section').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.family-tab').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('fam-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function renderFamilyInfo(){
+  // Render functions list (read-only) for family
+  var html = '';
+  if (!funcs.length){
+    html = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px">Functions will be shared soon!</div>';
+  } else {
+    funcs.forEach(function(f){
+      html += '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+          +'<div style="font-size:22px">'+(f.emoji||'🎉')+'</div>'
+          +'<div style="flex:1"><div style="font-size:14px;font-weight:600">'+f.title+'</div>'
+          +'<div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px">'+fmtFnDate(f.date)+(f.time?' · '+f.time:'')+'</div></div>'
+        +'</div>'
+        +(f.venue?'<div style="font-size:12px;color:var(--text2);margin:3px 0"><strong style="color:var(--text3);font-size:11px">VENUE:</strong> '+f.venue+'</div>':'')
+        +(f.dress?'<div style="font-size:12px;color:var(--text2);margin:3px 0"><strong style="color:var(--text3);font-size:11px">DRESS CODE:</strong> '+f.dress+'</div>':'')
+        +(f.theme?'<div style="font-size:12px;color:var(--text2);margin:3px 0;display:flex;align-items:center;gap:6px"><strong style="color:var(--text3);font-size:11px">THEME:</strong> <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+(f.color||'#999')+';border:1px solid var(--border2)"></span> '+f.theme+'</div>':'')
+      +'</div>';
+    });
+  }
+  document.getElementById('fam-functions-list').innerHTML = html;
+
+  // Render today's timeline (read from coordinator's saved timeline)
+  var tlEl = document.getElementById('fam-timeline');
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw){
+      var s = JSON.parse(raw);
+      if (s.timelineListHTML){
+        tlEl.innerHTML = s.timelineListHTML;
+        return;
+      }
+    }
+  } catch(e){}
+  tlEl.innerHTML = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px">Schedule coming soon</div>';
+}
+
+function FAMILY_SUBMITTED_KEY(){ return STORAGE_KEY + '_family_submitted'; }
+
+function checkExistingRSVP(){
+  var submitted = localStorage.getItem(FAMILY_SUBMITTED_KEY());
+  if (submitted){
+    try {
+      var data = JSON.parse(submitted);
+      document.getElementById('fam-rsvp-status-wrap').innerHTML =
+        '<div class="rsvp-status">'
+        +'<div class="icon">✅</div>'
+        +'<div class="text">Thanks '+data.name+'!<br>Your RSVP for '+data.pax+' '+(data.pax==1?'person':'people')+' is submitted.</div>'
+        +'</div>';
+    } catch(e){}
+  }
+}
+
+function submitFamilyRSVP(){
+  var name = document.getElementById('fam-name').value.trim();
+  var pax = parseInt(document.getElementById('fam-pax').value)||1;
+  var fromCity = document.getElementById('fam-from-city').value.trim();
+  var mode = document.getElementById('fam-mode').value;
+  var num = document.getElementById('fam-num').value.trim();
+  var date = document.getElementById('fam-date').value;
+  var time = document.getElementById('fam-time').value;
+  var phone = document.getElementById('fam-phone').value.trim();
+  var notes = document.getElementById('fam-notes').value.trim();
+
+  if (!name){ toast('Please enter your name'); return; }
+  if (!fromCity){ toast('Please tell us where you\'re coming from'); return; }
+
+  var data = {
+    id: Date.now(),
+    name: name,
+    pax: pax,
+    fromCity: fromCity,
+    mode: mode,
+    num: num || 'TBD',
+    date: date || '',
+    time: time || '',
+    phone: phone,
+    notes: notes,
+    submittedAt: new Date().toISOString()
+  };
+
+  // Save THIS family's submission locally on their device
+  localStorage.setItem(FAMILY_SUBMITTED_KEY(), JSON.stringify(data));
+
+  // Add to the shared family RSVPs list (for coordinator)
+  familyRSVPs.push(data);
+  saveState();
+
+  // Show confirmation
+  document.getElementById('fam-rsvp-status-wrap').innerHTML =
+    '<div class="rsvp-status">'
+    +'<div class="icon">✅</div>'
+    +'<div class="text">Thanks '+data.name+'!<br>Your RSVP for '+data.pax+' '+(data.pax==1?'person':'people')+' is submitted.</div>'
+    +'</div>';
+
+  toast('RSVP submitted — coordinator will be in touch');
+}
+
+function renderFamilyProgress(){
+  // Calculate progress %
+  var totalTasks = (typeof tasks !== 'undefined' && tasks.length) ? tasks.length : 0;
+  var doneTasks = totalTasks ? tasks.filter(function(t){return t.done;}).length : 0;
+  var pct = totalTasks ? Math.round(doneTasks / totalTasks * 100) : 0;
+
+  // Vendor count from saved HTML (since vendors aren't a JS array, they're DOM)
+  var vendorCount = 0;
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw){
+      var s = JSON.parse(raw);
+      if (s.vendorListHTML){
+        var div = document.createElement('div');
+        div.innerHTML = s.vendorListHTML;
+        vendorCount = div.querySelectorAll('.vendor-item:not([data-replaced])').length;
+      }
+    }
+  } catch(e){}
+
+  // Update headline
+  document.getElementById('fam-progress-pct').textContent = pct + '%';
+  document.getElementById('fam-progress-fill').style.width = pct + '%';
+
+  var label = 'Wedding is being prepared';
+  if (pct === 0) label = 'Just getting started';
+  else if (pct < 25) label = 'Preparations underway';
+  else if (pct < 50) label = 'Things are coming together';
+  else if (pct < 75) label = 'More than halfway there!';
+  else if (pct < 100) label = 'Almost ready!';
+  else label = '🎉 Everything is ready!';
+  document.getElementById('fam-progress-label').textContent = label;
+
+  // Highlights
+  document.getElementById('fam-h-vendors').textContent = vendorCount;
+  document.getElementById('fam-h-tasks').textContent = doneTasks + '/' + totalTasks;
+
+  // Latest update — most recent message that's not from family
+  var latestEl = document.getElementById('fam-latest-update');
+  var coordMsgs = (typeof messages !== 'undefined') ? messages.filter(function(m){ return m.tag !== 'urgent'; }) : [];
+  if (coordMsgs.length){
+    var last = coordMsgs[coordMsgs.length-1];
+    latestEl.innerHTML = '<div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">'+last.time+' · '+last.sender+'</div>'+last.text;
+  } else {
+    latestEl.textContent = 'No updates yet — check back soon!';
+  }
+
+  // Urgent alerts
+  var urgentMsgs = (typeof messages !== 'undefined') ? messages.filter(function(m){ return m.tag === 'urgent'; }) : [];
+  var alertsCard = document.getElementById('fam-alerts-card');
+  var alertsList = document.getElementById('fam-alerts-list');
+  if (urgentMsgs.length){
+    alertsCard.style.display = 'block';
+    var html = '';
+    urgentMsgs.slice(-2).reverse().forEach(function(m){
+      html += '<div style="padding:6px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:2px">'+m.time+'</div>'
+        +m.text
+      +'</div>';
+    });
+    alertsList.innerHTML = html;
+  } else {
+    alertsCard.style.display = 'none';
+  }
+}
+
+
+function renderFamilyChat(){
+  var tagMap={update:{cls:'b-green',icon:'📢'},urgent:{cls:'b-red',icon:'🚨'},info:{cls:'b-blue',icon:'ℹ️'}};
+  var html='';
+  if (!familyMessages.length){
+    html = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px">No messages yet. Start a conversation below!</div>';
+  } else {
+    familyMessages.slice().reverse().forEach(function(m){
+      var t=tagMap[m.tag]||tagMap.info;
+      var senderColor = m.from==='coordinator' ? 'var(--accent)' : 'var(--green)';
+      html+='<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+          +'<div style="font-size:12px;font-weight:600;color:'+senderColor+'">'+m.sender+'</div>'
+          +'<span class="badge '+t.cls+'" style="font-size:9px">'+t.icon+' '+m.tag+'</span>'
+          +'<span style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-left:auto">'+m.time+'</span>'
+        +'</div>'
+        +'<div style="font-size:13px;color:var(--text2);line-height:1.5">'+m.text+'</div>'
+      +'</div>';
+    });
+  }
+  document.getElementById('fam-chat-list').innerHTML = html;
+}
+
+function sendFamilyMsg(){
+  var msg = document.getElementById('fam-chat-msg').value.trim();
+  var tag = document.getElementById('fam-chat-tag').value;
+  if (!msg){ toast('Please type a message'); return; }
+  // Get sender name from the RSVP if submitted
+  var senderName = 'Family member';
+  var submitted = localStorage.getItem(FAMILY_SUBMITTED_KEY());
+  if (submitted){
+    try { senderName = JSON.parse(submitted).name; } catch(e){}
+  }
+  familyMessages.push({
+    id: Date.now(),
+    sender: senderName,
+    from: 'family',
+    tag: tag,
+    text: msg,
+    time: getTime()
+  });
+  saveState();
+  document.getElementById('fam-chat-msg').value = '';
+  renderFamilyChat();
+  toast('Message sent — coordinator will respond soon');
+}
+
+// === COORDINATOR-SIDE FAMILY MANAGEMENT ===
+
+function generateFamilyLink(){
+  var url = window.location.href.split('#')[0] + '#family';
+  document.getElementById('fam-link-display').textContent = url;
+  // Try to copy to clipboard
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){
+        toast('Link copied! Share it on WhatsApp.');
+      }).catch(function(){
+        toast('Link generated — long-press to copy.');
+      });
+    } else {
+      toast('Link generated — long-press to copy.');
+    }
+  } catch(e){
+    toast('Link generated — long-press to copy.');
+  }
+}
+
+function renderFamilySubmissions(){
+  var el = document.getElementById('family-submissions-list');
+  if (!el) return;
+  if (!familyRSVPs.length){
+    el.innerHTML = '<div style="color:var(--text3);font-size:12px">No RSVPs yet</div>';
+    return;
+  }
+  var html = '';
+  familyRSVPs.forEach(function(r){
+    var phoneLink = r.phone ? '<a href="tel:'+r.phone.replace(/\s/g,'')+'" style="color:var(--blue);text-decoration:none">📞 '+r.phone+'</a>' : '';
+    html += '<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">'
+      +'<div style="font-weight:600;color:var(--text);font-size:13px;margin-bottom:4px">'+r.name+' · '+r.pax+' pax</div>'
+      +'<div style="line-height:1.6">'
+        +(r.mode==='Flight'?'✈️':r.mode==='Train'?'🚆':'🚗')+' '+r.mode+' <strong>'+r.num+'</strong> from '+r.fromCity
+        +(r.date?' · '+r.date:'')+(r.time?' '+r.time:'')
+      +'</div>'
+      +(phoneLink?'<div style="margin-top:4px">'+phoneLink+'</div>':'')
+      +(r.notes?'<div style="margin-top:4px;color:var(--accent);font-size:11px">📝 '+r.notes+'</div>':'')
+    +'</div>';
+  });
+  el.innerHTML = html;
+}
+
+function renderCoordFamilyMessages(){
+  var el = document.getElementById('family-messages-list');
+  if (!el) return;
+  if (!familyMessages.length){
+    el.innerHTML = '<div style="color:var(--text3);font-size:12px">No messages yet</div>';
+    return;
+  }
+  var tagMap={update:{cls:'b-green',icon:'📢'},urgent:{cls:'b-red',icon:'🚨'},info:{cls:'b-blue',icon:'ℹ️'}};
+  var html = '';
+  familyMessages.slice().reverse().forEach(function(m){
+    var t=tagMap[m.tag]||tagMap.info;
+    var senderColor = m.from==='coordinator' ? 'var(--accent)' : 'var(--green)';
+    html += '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
+        +'<div style="font-size:12px;font-weight:600;color:'+senderColor+'">'+m.sender+'</div>'
+        +'<span class="badge '+t.cls+'" style="font-size:9px">'+t.icon+' '+m.tag+'</span>'
+        +'<span style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-left:auto">'+m.time+'</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--text2);line-height:1.5">'+m.text+'</div>'
+    +'</div>';
+  });
+  el.innerHTML = html;
+}
+
+function coordReplyFamily(){
+  var msg = document.getElementById('coord-reply-msg').value.trim();
+  if (!msg){ toast('Please type a reply'); return; }
+  familyMessages.push({
+    id: Date.now(),
+    sender: 'Coordinator',
+    from: 'coordinator',
+    tag: 'info',
+    text: msg,
+    time: getTime()
+  });
+  document.getElementById('coord-reply-msg').value = '';
+  renderCoordFamilyMessages();
+  saveState();
+  toast('Reply sent to family');
+}
+
+// === INIT ===
+loadState();
+
+if (isFamilyMode()){
+  showFamilyMode();
+} else {
+  showCoordinatorMode();
+  makePhonesTappable();
+  bindEnterToSubmit();
+  renderTasks();
+  renderMessages();
+  renderArrivals();
+  renderVehicles();
+  renderHotels();
+  renderFunctions();
+  renderPlanning();
+  renderGuests();
+  renderFamilySubmissions();
+  renderCoordFamilyMessages();
+  updateDashProgress();
+  renderTodaySnapshot();
+  renderTodayMessagesPreview();
+  renderAttentionPile();
+  renderOnboarding();
+}
+
+// Family-side: refresh from storage every few seconds in case coordinator updates info
+if (isFamilyMode()){
+  setInterval(function(){
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        var s = JSON.parse(raw);
+        if (Array.isArray(s.funcs)) funcs = s.funcs;
+        if (Array.isArray(s.familyMessages)) familyMessages = s.familyMessages;
+        if (Array.isArray(s.tasks)) tasks = s.tasks;
+        if (Array.isArray(s.messages)) messages = s.messages;
+      }
+    } catch(e){}
+    renderFamilyInfo();
+    renderFamilyChat();
+    renderFamilyProgress();
+  }, 3000);
+}
+
+// Reload when user switches between modes via URL hash
+window.addEventListener('hashchange', function(){ location.reload(); });
+
+</script>
+</body>
+</html>
